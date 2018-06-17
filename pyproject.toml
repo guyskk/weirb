@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "weirb"
+version = "0.1.0"
+description = "weirb"
+authors = ["guyskk <guyskk@qq.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.6"
+toml = "^0.9.4"
+click = "^6.7"
+gunicorn = "^19.8"
+httptools = "^0.0.11"
+coloredlogs = "^10.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.0"
+
+[tool.poetry.scripts]
+weirb = 'weirb:main'
