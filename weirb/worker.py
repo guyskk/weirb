@@ -2,7 +2,8 @@ import logging
 from newio import spawn
 
 from .error import HttpError, InternalServerError
-from .response import ErrorResponse
+from .response import AbstractResponse
+from .helper import stream
 
 LOG = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ def _is_keep_alive(request, response):
 
 
 def _format_headers(response):
-    headers = [f'HTTP/1.1 {response.status} {response.status_text}']
+    headers = [f'{response.version} {response.status} {response.status_text}']
     for k, v in response.headers:
         headers.append(f'{k}: {v}')
     return '\r\n'.join(headers).encode() + b'\r\n\r\n'
@@ -24,6 +25,22 @@ def _format_headers(response):
 def _format_chunk(chunk: bytes):
     length = hex(len(chunk))[2:].encode()
     return length + b'\r\n' + chunk + b'\r\n'
+
+
+class ErrorResponse(AbstractResponse):
+    def __init__(self, error: HttpError):
+        self._error = error
+        self._body = str(error).encode('utf-8')
+        self.status = error.status
+        self.status_text = error.phrase
+        self.version = 'HTTP/1.1'
+        self.headers = [('Content-Length', len(self._body))]
+        self.body = stream(self._body)
+        self.chunked = False
+        self.keep_alive = None
+
+    def __repr__(self):
+        return f'<{type(self).__name__} {self.status}: {self._error.message}>'
 
 
 class Worker:
@@ -37,7 +54,7 @@ class Worker:
 
     async def main(self):
         try:
-            keep_alive = await self._worker_impl()
+            keep_alive = await self._worker()
             if not keep_alive:
                 await self._close()
             else:
@@ -63,21 +80,18 @@ class Worker:
 
     async def _send_error(self, error: HttpError):
         response = ErrorResponse(error)
-        async with response:
-            await self._send_response(response)
+        await self._send_response(response)
         LOG.debug('Request finished: %s', response)
-
-    async def _drain_request(self, request):
-        # drain request data
-        return
-        async for _ in request.body:  # noqa: F841
-            pass
 
     async def _close(self):
         LOG.debug('Close connection %s', self.address)
         await self.cli_sock.close()
 
-    async def _worker_impl(self):
+    async def _drain_request(self, request):
+        async for _ in request.body:  # noqa: F841
+            pass
+
+    async def _worker(self):
         # parse request
         try:
             request = await self.parse_request(self.cli_sock, self.cli_addr)
@@ -89,22 +103,20 @@ class Worker:
             return False
         LOG.debug('Request parsed: %s', request)
 
-        # get response with headers
-        try:
-            response = await self.app(request)
-        except HttpError as ex:
-            await self._send_error(ex)
-            await self._drain_request(request)
-            return request.keep_alive
-        except Exception as ex:
-            LOG.error('Error raised when handle request:', exc_info=ex)
-            await self._send_error(InternalServerError())
-            await self._drain_request(request)
-            return request.keep_alive
-
-        # send response
-        async with response:
+        # handle request
+        async with self.app.context() as ctx:
+            try:
+                response = await ctx(request)
+            except HttpError as ex:
+                await self._drain_request(request)
+                await self._send_error(ex)
+                return request.keep_alive
+            except Exception as ex:
+                LOG.error('Error raised when handle request:', exc_info=ex)
+                await self._drain_request(request)
+                await self._send_error(InternalServerError())
+                return request.keep_alive
+            keep_alive = _is_keep_alive(request, response)
             await self._send_response(response)
-        await self._drain_request(request)
         LOG.debug('Request finished: %s', response)
-        return _is_keep_alive(request, response)
+        return keep_alive

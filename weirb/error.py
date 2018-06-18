@@ -11,35 +11,23 @@ class ConfigError(WeirbError):
     """Config Error"""
 
 
-# class AppNotFound(WeirbError):
-#     """App Not Found"""
-
-
 class HttpError(WeirbError):
-    """Base class for all http errors"""
+    """Base class of http errors"""
 
     status = phrase = message = None
 
-    def __init__(self, *args, **kwargs):
-        raise RuntimeError("HttpError can not be instantiated")
+    def __init__(self, message=None):
+        if self.status is None or self.phrase is None:
+            msg = f"{type(self).__name__} can not be instantiated"
+            raise RuntimeError(msg)
+        s = HTTPStatus(self.status)
+        self.message = message or s.description
 
     def __repr__(self):
         return f'{type(self).__name__}({self.status}, {self.message!r})'
 
     def __str__(self):
         return f'{self.status} {self.phrase}: {self.message}'
-
-
-class _HttpError(HttpError):
-    """The actual base class of all http error classes"""
-
-    status = None
-
-    def __init__(self, message=None):
-        if self.status is None:
-            raise RuntimeError("_HttpError can not be instantiated")
-        s = HTTPStatus(self.status)
-        self.message = message or s.description
 
 
 HTTP_ERRORS = {}
@@ -52,7 +40,7 @@ def _init_http_errors():
         if s < 400:
             continue
         classname = s.phrase.replace(' ', '')
-        error_class = type(classname, (_HttpError,), {
+        error_class = type(classname, (HttpError,), {
             'status': int(s),
             'phrase': s.phrase,
             '__doc__': s.description,

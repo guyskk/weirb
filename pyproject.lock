@@ -2,7 +2,7 @@
 name = "atomicwrites"
 version = "1.1.5"
 description = "Atomic file writes."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 platform = "UNKNOWN"
@@ -11,7 +11,7 @@ platform = "UNKNOWN"
 name = "attrs"
 version = "18.1.0"
 description = "Classes Without Boilerplate"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 platform = "*"
@@ -52,7 +52,7 @@ humanfriendly = ">=4.7"
 name = "coverage"
 version = "4.5.1"
 description = "Code coverage measurement for Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, <4"
 platform = "*"
@@ -90,7 +90,7 @@ pyreadline = "*"
 name = "more-itertools"
 version = "4.2.0"
 description = "More routines for operating on iterables, beyond itertools"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 platform = "*"
@@ -101,7 +101,7 @@ six = ">=1.0.0,<2.0.0"
 name = "pluggy"
 version = "0.6.0"
 description = "plugin and hook calling mechanisms for python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 platform = "unix"
@@ -110,7 +110,7 @@ platform = "unix"
 name = "py"
 version = "1.5.3"
 description = "library with cross-python path, ini-parsing, io, code, log facilities"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 platform = "unix"
@@ -130,7 +130,7 @@ platform = "win32"
 name = "pytest"
 version = "3.6.1"
 description = "pytest: simple powerful testing with Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 platform = "unix"
@@ -148,7 +148,7 @@ py = ">=1.5.0"
 name = "pytest-cov"
 version = "2.5.1"
 description = "Pytest plugin for measuring coverage."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 platform = "*"
@@ -169,7 +169,7 @@ platform = "*"
 name = "six"
 version = "1.11.0"
 description = "Python 2 and 3 compatibility utilities"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 platform = "*"
@@ -182,6 +182,15 @@ category = "main"
 optional = false
 python-versions = "*"
 platform = "*"
+
+[[package]]
+name = "werkzeug"
+version = "0.14.1"
+description = "The comprehensive WSGI web application library."
+category = "main"
+optional = false
+python-versions = "*"
+platform = "any"
 
 [[package]]
 name = "zope.interface"
@@ -198,7 +207,7 @@ setuptools = "*"
 [metadata]
 python-versions = ">=3.6"
 platform = "*"
-content-hash = "ffd9b3af25935597bd9741596128734cc6346e7697eab9083f3e2edef5c4ef72"
+content-hash = "aa28aa73f72cab383ea600d40ccfbb90ac2bb2beb59d4994645bf43980073037"
 
 [metadata.hashes]
 atomicwrites = [ "a24da68318b08ac9c9c45029f4a10371ab5b20e4226738e150e6e7c571630ae6", "240831ea22da9ab882b551b31d4225591e5e447a68c5e188db5b89ca1d487585",]
@@ -219,4 +228,5 @@ pytest-cov = [ "890fe5565400902b0c78b5357004aab1c814115894f4f21370e2433256a3eeec
 setuptools = [ "8fca9275c89964f13da985c3656cb00ba029d7f3916b37990927ffdf264e7926", "f7cddbb5f5c640311eb00eab6e849f7701fa70bf6a183fc8a2c33dd1d1672fb2",]
 six = [ "832dc0e10feb1aa2c68dcc57dbb658f1c7e65b9b61af69048abc87a2db00a0eb", "70e8a77beed4562e7f14fe23a786b54f6296e34344c23bc42f07b15018ff98e9",]
 toml = [ "8e86bd6ce8cc11b9620cb637466453d94f5d57ad86f17e98a98d1f73e3baab2d",]
+werkzeug = [ "d5da73735293558eb1651ee2fddc4d0dedcfa06538b8813a2e20011583c9e49b", "c3fd7a7d41976d9f44db327260e263132466836cef6f91512889ed60ad26557c",]
 "zope.interface" = [ "467d364b24cb398f76ad5e90398d71b9325eb4232be9e8a50d6a3b3c7a1c8789", "3d184aff0756c44fff7de69eb4cd5b5311b6f452d4de28cb08343b3f21993763", "21506674d30c009271fe68a242d330c83b1b9d76d62d03d87e1e9528c61beea6", "f41037260deaacb875db250021fe883bf536bf6414a4fd25b25059b02e31b120", "9ada83f4384bbb12dedc152bcdd46a3ac9f5f7720d43ac3ce3e8e8b91d733c10", "e881ef610ff48aece2f4ee2af03d2db1a146dc7c705561bd6089b2356f61641f", "e6b77ae84f2b8502d99a7855fa33334a1eb6159de45626905cb3e454c023f339", "a1daf9c5120f3cc6f2b5fef8e1d2a3fb7bbbb20ed4bfdc25bc8364bc62dcf54b", "57c38470d9f57e37afb460c399eb254e7193ac7fb8042bd09bdc001981a9c74c",]

@@ -4,7 +4,7 @@ from urllib.parse import unquote
 import httptools
 from newio import timeout_after
 
-from .request import Request
+from .request import RawRequest
 from .error import (
     BadRequest,
     RequestHeaderFieldsTooLarge,
@@ -149,7 +149,7 @@ class RequestParser:
         Returns:
             Request object, or None if no data received
         Raises:
-            BadRequest: request invalid or incomplete
+            BadRequest: request headers invalid or incomplete
             RequestHeaderFieldsTooLarge: request headers too large
             RequestTimeout: read request headers timeout
             RequestEntityTooLarge: request content-length too large
@@ -189,7 +189,7 @@ class RequestParser:
             if content_length > self.max_body_size:
                 raise RequestEntityTooLarge()
 
-        return Request(
+        return RawRequest(
             method=self.method,
             url=self.url,
             version=self.version,

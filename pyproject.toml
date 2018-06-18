@@ -12,6 +12,7 @@ gunicorn = "^19.8"
 httptools = "^0.0.11"
 coloredlogs = "^10.0"
 "zope.interface" = "^4.5"
+werkzeug = "^0.14.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"

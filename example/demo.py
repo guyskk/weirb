@@ -1,25 +1,33 @@
-from weirb.helper import stream
-from weirb import run, AbstractResponse
+from weirb import run, Request, Response
 
 
-class ContextResponse(AbstractResponse):
+class AppContext:
 
-    def __init__(self, text):
-        self._body = text.encode('utf-8')
-        self.status = 200
-        self.status_text = 'OK'
-        self.version = 'HTTP/1.1'
-        self.headers = [('Content-Length', len(self._body))]
-        self.body = stream(self._body)
-        self.chunked = False
-        self.keep_alive = None
+    def __init__(self, handler):
+        self.handler = handler
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc_info):
+        return None
+
+    async def __call__(self, raw_request):
+        request = Request(raw_request)
+        return await self.handler(request)
 
 
-async def app(request):
-    if request.url == '/error':
-        raise ValueError(request.url)
-    return ContextResponse(f'welcome {request.url}')
+class App:
+
+    def context(self):
+        return AppContext(self.handler)
+
+    async def handler(self, request):
+        if request.url == '/error':
+            raise ValueError(request.url)
+        content = f'welcome {request.url}'.encode('utf-8')
+        return Response(body=content)
 
 
 if __name__ == '__main__':
-    run(app, debug=True, reloader_enable=False)
+    run(App(), debug=True, reloader_enable=False)
