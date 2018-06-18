@@ -1,0 +1,12 @@
+[tool.poetry]
+name = "weirb-hrpc"
+version = "0.1.0"
+description = "Weirb HTTP RPC"
+authors = ["guyskk <guyskk@qq.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.6"
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.5"
