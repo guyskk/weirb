@@ -1,17 +1,19 @@
 import os
+import inspect
 import logging
 from importlib import import_module
 
 import toml
-from validr import Invalid, Compiler, fields, asdict
-from weirb import Request as HttpRequest, run
+from terminaltables import SingleTable
+from validr import modelclass, Invalid, Compiler, fields, asdict
+from weirb import Request as HttpRequest, Config as ServerConfig, run
 from weirb.error import HttpError
 
 from .error import ConfigError, DependencyError, HrpcError, InternalError
 from .response import ErrorResponse
 from .context import Context
-from .helper import import_services
-from .config import InternalConfig
+from .helper import import_all_modules
+from .config import InternalConfig, INTERNAL_VALIDATORS
 from .service import Service
 from .router import Router
 
@@ -19,15 +21,15 @@ LOG = logging.getLogger(__name__)
 
 
 class App:
-    def __init__(self, import_name, **config):
+    def __init__(self, import_name, **cli_config):
         self.import_name = import_name
         self._load_config_module()
         self._load_plugins()
+        self._load_schema_compiler()
         self._load_config_class()
-        self._load_config(config)
+        self._load_config(cli_config)
         self._config_dict = asdict(self.config)
         self._active_plugins()
-        self._load_schema_compiler()
         self._load_services()
         self.router = Router(self.services, self.config.url_prefix)
 
@@ -41,6 +43,18 @@ class App:
             except ImportError:
                 pass
 
+    def _load_plugins(self):
+        if hasattr(self.config_module, 'plugins'):
+            self.plugins = list(self.config_module.plugins)
+        else:
+            self.plugins = []
+
+    def _load_schema_compiler(self):
+        self.validators = INTERNAL_VALIDATORS.copy()
+        if hasattr(self.config_module, 'validators'):
+            self.validators.update(self.config_module.validators)
+        self.schema_compiler = Compiler(self.validators)
+
     def _load_config_class(self):
         """
         user_config > internal_config > plugin_config
@@ -52,39 +66,34 @@ class App:
         for plugin in self.plugins:
             if hasattr(plugin, 'Config'):
                 configs.append(plugin.Config)
-        self.config_class = type('Config', tuple(configs), {})
+        config_class = type('Config', tuple(configs), {})
+        self.config_class = modelclass(
+            config_class, compiler=self.schema_compiler, immutable=True)
 
-    def _load_config(self, config):
+    def _load_config(self, cli_config):
         key = f'{self.import_name}_config'.upper()
         config_path = os.getenv(key, None)
-        if not config_path:
+        if config_path:
+            print(f'* Load config file {config_path!r}')
             try:
-                self.config = self.config_class(**config)
-            except Invalid as ex:
-                raise ConfigError(ex.message) from None
-            return
+                with open(config_path) as f:
+                    content = f.read()
+            except FileNotFoundError:
+                msg = f'config file {config_path!r} not found'
+                raise ConfigError(msg) from None
+            try:
+                config = toml.loads(content)
+            except toml.TomlDecodeError:
+                msg = f'config file {config_path!r} is not valid TOML file'
+                raise ConfigError(msg) from None
+            config.update(cli_config)
+        else:
+            print(f'* No config file provided')
+            config = cli_config
         try:
-            with open(config_path) as f:
-                content = f.read()
-        except FileNotFoundError:
-            msg = f'config file {config_path!r} not found'
-            raise ConfigError(msg) from None
-        try:
-            file_config = toml.loads(content)
-        except toml.TomlDecodeError:
-            msg = f'config file {config_path!r} is not valid TOML file'
-            raise ConfigError(msg) from None
-        file_config.update(config)
-        try:
-            self.config = self.config_class(**file_config)
+            self.config = self.config_class(**config)
         except Invalid as ex:
             raise ConfigError(ex.message) from None
-
-    def _load_plugins(self):
-        if hasattr(self.config_module, 'plugins'):
-            self.plugins = list(self.config_module.plugins)
-        else:
-            self.plugins = []
 
     def _active_plugins(self):
         self.contexts = []
@@ -107,16 +116,9 @@ class App:
                 msg = f'the requires {missing} of plugin {plugin} is missing'
                 raise DependencyError(msg)
 
-    def _load_schema_compiler(self):
-        if hasattr(self.config_module, 'validators'):
-            self.validators.update(self.config_module.validators)
-        else:
-            self.validators = {}
-        self.schema_compiler = Compiler(self.validators)
-
     def _load_services(self):
         self.services = []
-        for cls in import_services(self.import_name):
+        for cls in _import_services(self.import_name):
             s = Service(
                 cls, self.provides, self.decorators, self.schema_compiler)
             self.services.append(s)
@@ -139,4 +141,29 @@ class App:
         return http_response
 
     def run(self):
-        run(self, debug=self.config.debug)
+        if self.config.debug:
+            print_config(self.config)
+        server_config = asdict(self.config, keys=fields(ServerConfig))
+        run(self, **server_config)
+
+
+def _import_services(import_name):
+    suffix = 'Service'
+    for module in import_all_modules(import_name):
+        for name, obj in vars(module).items():
+            if name.endswith(suffix) and inspect.isclass(obj):
+                yield obj
+
+
+def print_config(config):
+    def shorten(x, w=30):
+        return (x[:w] + '...') if len(x) > w else x
+    table = [('Key', 'Value', 'Validator')]
+    config_schema = config.__schema__.items
+    for key, value in sorted(asdict(config).items()):
+        schema = config_schema[key]
+        table.append(
+            (key, shorten(str(value)), shorten(schema.repr()))
+        )
+    table = SingleTable(table, title='Config')
+    print(table.table)

@@ -1,7 +1,18 @@
 import os
 import os.path
 import importlib
-import inspect
+
+
+def find_version():
+    try:
+        from pkg_resources import get_distribution, DistributionNotFound
+    except ImportError:
+        return 'unknown'
+    try:
+        pkg = get_distribution('weirb')
+    except DistributionNotFound:
+        return 'dev'
+    return pkg.version
 
 
 def import_all_modules(import_name):
@@ -23,11 +34,3 @@ def import_all_modules(import_name):
                     module = os.path.splitext(os.path.join(root, filename))[0]
                     module = module[len(root_path):].replace('/', '.')
                     yield importlib.import_module(f'{import_name}{module}')
-
-
-def import_services(import_name):
-    suffix = 'Service'
-    for module in import_all_modules(import_name):
-        for name, obj in vars(module).items():
-            if name.endswith(suffix) and inspect.isclass(obj):
-                yield obj

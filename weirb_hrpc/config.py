@@ -1,10 +1,9 @@
-from validr import modelclass, Compiler, T
+from validr import T
 from weirb.config import loglevel_validator
 
-_compiler = Compiler(validators=dict(loglevel=loglevel_validator))
+INTERNAL_VALIDATORS = {'loglevel': loglevel_validator}
 
 
-@modelclass(compiler=_compiler, immutable=True)
 class InternalConfig:
     debug = T.bool.default(False)
     host = T.str.default('127.0.0.1')
@@ -27,8 +26,8 @@ class InternalConfig:
         '%(name)s:%(lineno)-4d %(message)s')
     logger_datefmt = T.str.default('%Y-%m-%d %H:%M:%S')
 
-    def __post_init__(self):
-        if not self.logger_level:
-            self.logger_level = 'DEBUG' if self.debug else 'INFO'
-        if self.reloader_enable is None:
-            self.reloader_enable = self.debug
+    # def __post_init__(self):
+    #     if not self.logger_level:
+    #         self.logger_level = 'DEBUG' if self.debug else 'INFO'
+    #     if self.reloader_enable is None:
+    #         self.reloader_enable = self.debug
