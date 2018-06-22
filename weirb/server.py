@@ -10,6 +10,8 @@ import os
 import sys
 import fcntl
 import logging
+import signal
+import time
 from multiprocessing import Process
 
 from validr import Invalid
@@ -47,6 +49,7 @@ class Server:
         self._init_loging()
         self._init_serv_sock()
         self._init_processes()
+        self._reloading = False
 
     def _parse_request(self, cli_sock, cli_addr):
         parser = RequestParser(
@@ -109,10 +112,24 @@ class Server:
             LOG.info(f'Process#{i} pid={pid} exited')
 
     def _reload(self, filename):
+        if self._reloading:
+            return
         print(f'* Detected change in {filename!r}, reloading')
+        self._reloading = True
         for p in self._processes:
-            p.terminate()
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+            os.kill(p.pid, signal.SIGINT)
+        self._stop_processes()
+
+    def _stop_processes(self, timeout=0.3):
+        deadline = time.monotonic() + timeout
+        for i, p in enumerate(self._processes, 1):
+            my_timeout = deadline - time.monotonic()
+            if my_timeout > 0:
+                p.join(timeout=my_timeout)
+            if p.is_alive():
+                LOG.info(f'Process#{i} pid={p.pid} force terminated')
+                p.terminate()
+            p.join()
 
     def run(self):
         LOG.info(f'Starting {self.num_process} processes')
@@ -124,6 +141,10 @@ class Server:
                 p.join()
             except KeyboardInterrupt:
                 LOG.info('Shutting down processes')
+                break
+        self._stop_processes()
+        if self._reloading:
+            os.execv(sys.executable, [sys.executable] + sys.argv)
 
     async def _serve_forever(self):
         async with self._serv_sock:

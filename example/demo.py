@@ -30,4 +30,4 @@ class App:
 
 
 if __name__ == '__main__':
-    run(App(), debug=True, reloader_enable=False)
+    run(App(), debug=True, num_process=2)
