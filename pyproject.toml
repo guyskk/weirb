@@ -10,3 +10,6 @@ python = ">=3.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.5"
+
+[tool.poetry.scripts]
+hrpc = 'weirb_hrpc.cli:cli'

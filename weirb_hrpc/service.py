@@ -53,10 +53,10 @@ class Service:
 
     def __init__(self, service_class, provides, decorators, schema_compiler):
         self.name = service_class.__name__[:-len('Service')]
-        self.provides = provides
         self.decorators = decorators
         self.schema_compiler = schema_compiler
-        methods, fields = self._parse_service(service_class)
+        methods, fields = self._parse_service(service_class, provides)
+        self.fields = fields
         self.service_class = _make_service_class(service_class, fields)
         self.methods = []
         for name, f in methods:
@@ -65,15 +65,15 @@ class Service:
             m = Method(self.name, self.service_class, name, f, tags)
             self.methods.append(m)
 
-    def _parse_service(self, service_class):
+    def _parse_service(self, service_class, provides):
         prefix = 'method_'
         methods = []
         fields = {}
         for k, v in vars(service_class).items():
-            if callable(v) and k.startswith(prefix):
+            if callable(v) and k.startswith(prefix) and k != prefix:
                 methods.append((k[len(prefix):], v))
             elif isinstance(v, Dependency):
-                if v.key not in self.provides:
+                if v.key not in provides:
                     raise ValueError(f'dependency {v.key!r} not exists')
                 fields[k] = DependencyField(k, v.key)
         return methods, fields

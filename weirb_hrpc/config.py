@@ -5,12 +5,17 @@ INTERNAL_VALIDATORS = {'loglevel': loglevel_validator}
 
 
 class InternalConfig:
+    url_prefix = T.str.optional
+    print_config = T.bool.optional
+    print_plugin = T.bool.optional
+    print_service = T.bool.optional
+
     debug = T.bool.default(False)
     host = T.str.default('127.0.0.1')
     port = T.int.min(0).default(8080)
     backlog = T.int.min(1).default(1024)
     num_process = T.int.min(1).default(1)
-    url_prefix = T.str.optional
+
     request_header_timeout = T.float.min(-1).default(60)
     request_body_timeout = T.float.min(-1).default(60)
     request_keep_alive_timeout = T.float.min(-1).default(90)
@@ -26,8 +31,14 @@ class InternalConfig:
         '%(name)s:%(lineno)-4d %(message)s')
     logger_datefmt = T.str.default('%Y-%m-%d %H:%M:%S')
 
-    # def __post_init__(self):
-    #     if not self.logger_level:
-    #         self.logger_level = 'DEBUG' if self.debug else 'INFO'
-    #     if self.reloader_enable is None:
-    #         self.reloader_enable = self.debug
+    def __post_init__(self):
+        if not self.logger_level:
+            self.logger_level = 'DEBUG' if self.debug else 'INFO'
+        if self.reloader_enable is None:
+            self.reloader_enable = self.debug
+        if self.print_config is None:
+            self.print_config = self.debug
+        if self.print_plugin is None:
+            self.print_plugin = self.debug
+        if self.print_service is None:
+            self.print_service = self.debug

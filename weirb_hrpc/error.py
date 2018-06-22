@@ -10,6 +10,10 @@ class ConfigError(WeirbHrpcError):
     """Config Error"""
 
 
+class AppNotFound(WeirbHrpcError):
+    """App Not Fount"""
+
+
 class HrpcError(WeirbHrpcError):
     """Base class for HRPC Errors"""
 

@@ -1,6 +1,8 @@
 import os
+import sys
 import os.path
 import shutil
+from importlib import import_module
 from pathlib import Path
 from collections import deque
 
@@ -8,6 +10,8 @@ import click
 
 from . import __version__
 from . import App
+from .error import ConfigError, AppNotFound
+from .helper import get_current_app_name
 
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -87,16 +91,26 @@ def _parse_config_options(tokens):
     allow_extra_args=True,
     ignore_unknown_options=True
 ))
+@click.option('--name', type=str, required=False,
+              help='App name')
 @click.pass_context
-def run(ctx):
+def run(ctx, name=None):
     """Run app server, use `--<key>=<value>` to set config"""
-    name = os.path.basename(os.getcwd()).replace('-', '_')
-    app_exists = os.path.exists(name) or os.path.exists(f'{name}.py')
-    if not app_exists:
-        ctx.fail(f'App not found, is {name} directory or {name}.py exists?')
+    if not name:
+        try:
+            name = get_current_app_name()
+        except AppNotFound as ex:
+            ctx.fail(str(ex))
+    sys.path.append(os.path.abspath(os.getcwd()))
+    try:
+        import_module(name)
+    except ModuleNotFoundError as ex:
+        ctx.fail(f'App not found, {ex}')
     config = _parse_config_options(ctx.args)
-    print(config)
-    app = App(name, **config)
+    try:
+        app = App(name, **config)
+    except ConfigError as ex:
+        ctx.fail(str(ex))
     app.run()
 
 

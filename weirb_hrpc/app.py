@@ -6,7 +6,9 @@ from importlib import import_module
 import toml
 from terminaltables import SingleTable
 from validr import modelclass, Invalid, Compiler, fields, asdict
-from weirb import Request as HttpRequest, Config as ServerConfig, run
+from weirb import run
+from weirb import Request as HttpRequest
+from weirb import Config as ServerConfig
 from weirb.error import HttpError
 
 from .error import ConfigError, DependencyError, HrpcError, InternalError
@@ -71,7 +73,8 @@ class App:
             config_class, compiler=self.schema_compiler, immutable=True)
 
     def _load_config(self, cli_config):
-        key = f'{self.import_name}_config'.upper()
+        name = self.import_name.replace('.', '_')
+        key = f'{name}_config'.upper()
         config_path = os.getenv(key, None)
         if config_path:
             print(f'* Load config file {config_path!r}')
@@ -88,7 +91,8 @@ class App:
                 raise ConfigError(msg) from None
             config.update(cli_config)
         else:
-            print(f'* No config file provided')
+            print(f'* No config file provided, you can set config path'
+                  f' by {key} environment variable')
             config = cli_config
         try:
             self.config = self.config_class(**config)
@@ -117,8 +121,9 @@ class App:
                 raise DependencyError(msg)
 
     def _load_services(self):
+        service_classes = set(_import_services(self.import_name))
         self.services = []
-        for cls in _import_services(self.import_name):
+        for cls in service_classes:
             s = Service(
                 cls, self.provides, self.decorators, self.schema_compiler)
             self.services.append(s)
@@ -141,29 +146,68 @@ class App:
         return http_response
 
     def run(self):
-        if self.config.debug:
-            print_config(self.config)
+        if self.config.print_config:
+            self.print_config()
+        if self.config.print_plugin:
+            self.print_plugin()
+        if self.config.print_service:
+            self.print_service()
         server_config = asdict(self.config, keys=fields(ServerConfig))
         run(self, **server_config)
+
+    def print_config(self):
+        table = [('Key', 'Value', 'Schema')]
+        config_schema = self.config.__schema__.items
+        for key, value in sorted(asdict(self.config).items()):
+            schema = config_schema[key]
+            table.append(
+                (key, _shorten(str(value)), _shorten(schema.repr()))
+            )
+        table = SingleTable(table, title='Configs')
+        print(table.table)
+
+    def print_plugin(self):
+        title = 'Plugins' if self.plugins else 'No plugins'
+        table = [('#', 'Name', 'Provides', 'Requires', 'Contributes')]
+        for idx, plugin in enumerate(self.plugins, 1):
+            name = type(plugin).__name__
+            contributes = []
+            provides = ''
+            requires = ''
+            if hasattr(plugin, 'context'):
+                contributes.append('context')
+            if hasattr(plugin, 'decorator'):
+                contributes.append('decorator')
+            contributes = ', '.join(contributes)
+            if hasattr(plugin, 'provides'):
+                provides = ', '.join(plugin.provides)
+            if hasattr(plugin, 'requires'):
+                requires = ', '.join(plugin.requires)
+            table.append((idx, name, provides, requires, contributes))
+        table = SingleTable(table, title=title)
+        print(table.table)
+
+    def print_service(self):
+        title = 'Services' if self.services else 'No services'
+        table = [('#', 'Name', 'Methods', 'Requires')]
+        for idx, service in enumerate(self.services, 1):
+            methods = [m.name for m in service.methods]
+            methods = ', '.join(methods)
+            requires = [field.key for field in service.fields.values()]
+            requires = ', '.join(requires)
+            table.append((idx, service.name, methods, requires))
+        table = SingleTable(table, title=title)
+        print(table.table)
 
 
 def _import_services(import_name):
     suffix = 'Service'
     for module in import_all_modules(import_name):
         for name, obj in vars(module).items():
-            if name.endswith(suffix) and inspect.isclass(obj):
+            is_service = name != suffix and name.endswith(suffix)
+            if is_service and inspect.isclass(obj):
                 yield obj
 
 
-def print_config(config):
-    def shorten(x, w=30):
-        return (x[:w] + '...') if len(x) > w else x
-    table = [('Key', 'Value', 'Validator')]
-    config_schema = config.__schema__.items
-    for key, value in sorted(asdict(config).items()):
-        schema = config_schema[key]
-        table.append(
-            (key, shorten(str(value)), shorten(schema.repr()))
-        )
-    table = SingleTable(table, title='Config')
-    print(table.table)
+def _shorten(x, w=30):
+    return (x[:w] + '...') if len(x) > w else x
