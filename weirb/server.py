@@ -76,7 +76,7 @@ class Server:
         flags = fcntl.fcntl(serv_sock.fileno(), fcntl.F_GETFD)
         flags |= fcntl.FD_CLOEXEC
         fcntl.fcntl(serv_sock.fileno(), fcntl.F_SETFD, flags)
-        LOG.info(f'Listening http://{host}:{port}!')
+        print(f'* Server listening at http://{host}:{port}')
         serv_sock.bind((host, port))
         serv_sock.listen(backlog)
         self._serv_sock = serv_sock

@@ -15,7 +15,7 @@ def loglevel_validator(parser):
     def validate_loglevel(value):
         try:
             value = value.upper()
-        except:
+        except Exception:
             raise Invalid(f'Invalid log level {value!r}')
         if value not in LOG_LEVELS:
             raise Invalid(f'Unknown log level {value!r}')
