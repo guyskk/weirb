@@ -72,7 +72,12 @@ class Service:
         for cls in reversed(service_class.__mro__):
             for k, v in vars(cls).items():
                 if callable(v) and k.startswith(prefix) and k != prefix:
-                    methods[k[len(prefix):]] = v
+                    name = k[len(prefix):]
+                    if not inspect.iscoroutinefunction(v):
+                        msg = (f'{self.name}Service.{k} '
+                               f'is not coroutine function')
+                        raise TypeError(msg)
+                    methods[name] = v
                 if isinstance(v, Dependency):
                     if v.key not in provides:
                         raise ValueError(f'dependency {v.key!r} not exists')

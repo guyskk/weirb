@@ -79,6 +79,7 @@ def _parse_config_options(tokens):
         else:
             if prev is not None:
                 config[prev] = parts[0]
+                prev = None
             else:
                 prev = parts[0]
     _take_prev()
