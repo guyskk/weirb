@@ -59,7 +59,7 @@ class Service:
         self.fields = fields
         self.service_class = _make_service_class(service_class, fields)
         self.methods = []
-        for name, f in methods:
+        for name, f in methods.items():
             tags = tagger.get_tags(f)
             f = self._decorate(name, f)
             m = Method(self.name, self.service_class, name, f, tags)
@@ -67,15 +67,16 @@ class Service:
 
     def _parse_service(self, service_class, provides):
         prefix = 'method_'
-        methods = []
+        methods = {}
         fields = {}
-        for k, v in vars(service_class).items():
-            if callable(v) and k.startswith(prefix) and k != prefix:
-                methods.append((k[len(prefix):], v))
-            elif isinstance(v, Dependency):
-                if v.key not in provides:
-                    raise ValueError(f'dependency {v.key!r} not exists')
-                fields[k] = DependencyField(k, v.key)
+        for cls in reversed(service_class.__mro__):
+            for k, v in vars(cls).items():
+                if callable(v) and k.startswith(prefix) and k != prefix:
+                    methods[k[len(prefix):]] = v
+                if isinstance(v, Dependency):
+                    if v.key not in provides:
+                        raise ValueError(f'dependency {v.key!r} not exists')
+                    fields[k] = DependencyField(k, v.key)
         return methods, fields
 
     def _decorate(self, method, f):
