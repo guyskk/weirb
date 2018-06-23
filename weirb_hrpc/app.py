@@ -35,6 +35,9 @@ class App:
         self._load_services()
         self.router = Router(self.services, self.config.url_prefix)
 
+    def __repr__(self):
+        return f'<App {self.import_name}>'
+
     def _load_config_module(self):
         self.config_module = None
         try:
