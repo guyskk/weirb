@@ -17,30 +17,33 @@ class AppNotFound(WeirbHrpcError):
 class HrpcError(WeirbHrpcError):
     """Base class for HRPC Errors"""
 
-    error = None
+    code = None
 
     def __init__(self, message=None, data=None):
-        if self.error is None:
+        if self.code is None:
             raise RuntimeError(f'{type(self).__name__} can not instantiated')
-        self.message = message or self.error
+        self.message = message or self.code
         self.data = data
+
+    def __repr__(self):
+        return f'<{type(self).__name__} {self.code}>'
 
 
 class MethodNotFound(HrpcError):
-    error = 'Hrpc.Client.MethodNotFound'
+    code = 'Hrpc.Client.MethodNotFound'
 
 
 class InvalidRequest(HrpcError):
-    error = 'Hrpc.Client.InvalidRequest'
+    code = 'Hrpc.Client.InvalidRequest'
 
 
 class InvalidParams(HrpcError):
-    error = 'Hrpc.Client.InvalidParams'
+    code = 'Hrpc.Client.InvalidParams'
 
 
 class InternalError(HrpcError):
-    error = 'Hrpc.Server.InternalError'
+    code = 'Hrpc.Server.InternalError'
 
 
 class InvalidResult(HrpcError):
-    error = 'Hrpc.Server.InvalidResult'
+    code = 'Hrpc.Server.InvalidResult'

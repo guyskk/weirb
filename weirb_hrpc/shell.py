@@ -3,11 +3,11 @@ import json
 import code
 import atexit
 import os.path
-from terminaltables import AsciiTable
 from newio_kernel import run
 from weirb import RawRequest
 from weirb.error import HttpError
 
+from .shell_doc import format_service_doc, format_method_doc
 
 HISTORY_PATH = os.path.expanduser('~/.weirb-hrpc-history')
 
@@ -95,20 +95,22 @@ class Headers(dict):
 
 
 class Service:
-    def __init__(self, service, methods):
+    def __init__(self, shell, service):
+        self._shell = shell
+        self._doc = format_service_doc(service)
+        methods = {m.name: Method(shell, m)for m in service.methods}
         self.__dict__.update(methods)
-        self._service = service
-        self._methods = ','.join(methods)
 
     def __repr__(self):
-        return f'<{self._service}: {self._methods}>'
+        return '-' * 60 + '\n' + self._doc
 
 
 class Method:
-    def __init__(self, shell, service, method):
+    def __init__(self, shell, method):
         self._shell = shell
-        self._service = service
-        self._method = method
+        self._doc = format_method_doc(method)
+        self._service = method.service_name
+        self._method = method.name
 
     def __call__(self, **params):
         try:
@@ -117,7 +119,7 @@ class Method:
             return ex
 
     def __repr__(self):
-        return f'{self._service}.{self._method}'
+        return '-' * 60 + '\n' + self._doc
 
 
 class HrpcShell:
@@ -125,12 +127,7 @@ class HrpcShell:
         self.app = app
         self.url_prefix = app.config.url_prefix
         self.headers = Headers()
-        self.services = {}
-        for s in app.services:
-            methods = {}
-            for m in s.methods:
-                methods[m.name] = Method(self, s.name, m.name)
-            self.services[s.name] = Service(s.name, methods)
+        self.services = {s.name: Service(self, s) for s in app.services}
 
     def _get_endpoint(self, service, method):
         return f'{self.url_prefix}/{service}/{method}'
@@ -189,15 +186,18 @@ class HrpcShell:
     def _format_banner(self):
         python_version = '{}.{}.{}'.format(*sys.version_info)
         banner = [
-            f'Python {python_version} Hrpc Shell\n',
+            f'Python {python_version} Hrpc Shell\n\n',
             'Locals: ' + ', '.join(self._context_locals()) + '\n',
         ]
-        services = [('Service', 'Methods')]
+        if self.app.services:
+            services = ['\nServices:\n']
+        else:
+            services = ['\nServices: No Services\n']
         for s in self.app.services:
             methods = ', '.join([m.name for m in s.methods])
-            services.append((s.name, methods))
-        table = AsciiTable(services).table.strip()
-        banner.append(table)
+            services.append(f'    {s.name}: {methods}\n')
+        services = ''.join(services)
+        banner.append(services)
         return ''.join(banner)
 
     def start(self):

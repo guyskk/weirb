@@ -25,7 +25,7 @@ class ErrorResponse(Response):
             self.headers = {}
         else:
             self.headers = headers
-        self.headers['error'] = error.error
+        self.headers['error'] = error.code
         self.result = dict(
             message=error.message,
             data=data,

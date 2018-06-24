@@ -19,5 +19,5 @@ class EchoService:
     @http_response
     async def method_hecho(self, request):
         """A http echo method"""
-        text = request.querys.get('text', '') * self.echo_times
+        text = request.query.get('text', '') * self.echo_times
         return Response(200, body=text.encode('utf-8'))

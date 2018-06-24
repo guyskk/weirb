@@ -4,13 +4,21 @@ from validr import T, Invalid
 from weirb.error import BadRequest
 from .request import Request
 from .response import Response
-from .error import InvalidRequest, InvalidParams, InvalidResult
+from .error import HrpcError, InvalidRequest, InvalidParams, InvalidResult
 from .tagger import tagger
 
 http_request = tagger.tag('http_request', True)
 is_http_request = tagger.get('http_request', default=False)
 http_response = tagger.tag('http_response', True)
 is_http_response = tagger.get('http_response', default=False)
+
+
+def raises(error):
+    return tagger.stackable_tag('raises', error)
+
+
+get_raises = tagger.get('raises', default=None)
+
 
 LOG = logging.getLogger(__name__)
 
@@ -40,29 +48,93 @@ class DependencyField:
         return value
 
 
-def _make_service_class(base, fields):
-    cls = type(base.__name__, (base,), fields)
-    cls.__module__ = base.__module__
-    cls.__name__ = base.__name__
-    cls.__qualname__ = base.__qualname__
-    cls.__doc__ = base.__doc__
-    return cls
+class MethodInfo:
+    def __init__(self, service_name, name, f):
+        self.service_name = service_name
+        self.name = name
+        self.f = f
+        self.tags = tagger.get_tags(f)
+        self.doc = f.__doc__
+        self.is_http_request = is_http_request(f)
+        self.is_http_response = is_http_response(f)
+        if not self.is_http_request:
+            self.params = self._get_params(f)
+        else:
+            self.params = None
+        if not self.is_http_response:
+            self.returns = self._get_returns(f)
+        else:
+            self.returns = None
+        self.raises = self._get_raises(f)
+
+    def __repr__(self):
+        return f'<MethodInfo {self.service_name}.{self.name}>'
+
+    def _get_params(self, f):
+        sig = inspect.signature(f)
+        params_schema = {}
+        for name, p in sig.parameters.items():
+            if p.annotation is not inspect.Parameter.empty:
+                params_schema[name] = p.annotation
+        if params_schema:
+            return T.dict(params_schema).__schema__
+        return None
+
+    def _get_returns(self, f):
+        sig = inspect.signature(f)
+        if sig.return_annotation is not inspect.Signature.empty:
+            schema = sig.return_annotation
+            return T(schema).__schema__
+        return None
+
+    def _get_raises(self, f):
+        raises = get_raises(f) or []
+        for error in raises:
+            if not isinstance(error, HrpcError):
+                raise TypeError('Can only raises subtypes of HrpcError')
+        return raises
 
 
 class Service:
 
     def __init__(self, service_class, provides, decorators, schema_compiler):
         self.name = service_class.__name__[:-len('Service')]
+        self.doc = service_class.__doc__ or ''
         self.decorators = decorators
         self.schema_compiler = schema_compiler
         methods, fields = self._parse_service(service_class, provides)
-        self.fields = fields
-        self.service_class = _make_service_class(service_class, fields)
+        self._load_fields(fields)
+        self._make_service_class(service_class)
+        self._load_methods(methods)
+
+    def __repr__(self):
+        methods = ','.join(m.name for m in self.methods)
+        return f'<Service {self.name}: {methods}>'
+
+    def _load_fields(self, fields):
+        self.fields = {
+            k: DependencyField(k, v.key)
+            for k, v in fields.items()
+        }
+
+    def _make_service_class(self, base):
+        cls = type(base.__name__, (base,), self.fields)
+        cls.__module__ = base.__module__
+        cls.__name__ = base.__name__
+        cls.__qualname__ = base.__qualname__
+        cls.__doc__ = base.__doc__
+        self.service_class = cls
+
+    def _load_methods(self, methods):
         self.methods = []
         for name, f in methods.items():
-            tags = tagger.get_tags(f)
-            f = self._decorate(name, f)
-            m = Method(self.name, self.service_class, name, f, tags)
+            method_info = MethodInfo(self.name, name, f)
+            method_info.f = self._decorate(method_info)
+            m = Method(
+                service_name=self.name,
+                service_class=self.service_class,
+                method_info=method_info,
+            )
             self.methods.append(m)
 
     def _parse_service(self, service_class, provides):
@@ -81,35 +153,39 @@ class Service:
                 if isinstance(v, Dependency):
                     if v.key not in provides:
                         raise ValueError(f'dependency {v.key!r} not exists')
-                    fields[k] = DependencyField(k, v.key)
+                    fields[k] = v
         return methods, fields
 
-    def _decorate(self, method, f):
-        origin = f
-        tags = tagger.get_tags(f)
-        f = self._hrpc_decorator(method, f)
+    def _decorate(self, method_info):
+        origin = method_info.f
+        f = self._hrpc_decorator(origin, method_info)
         for d in self.decorators:
-            f = d(f, tags)
+            f = d(f, method_info)
         f.__name__ = origin.__name__
         f.__qualname__ = origin.__qualname__
         f.__module__ = origin.__module__
         f.__doc__ = origin.__doc__
         return f
 
-    def _hrpc_decorator(self, method, f):
-        _is_http_request = is_http_request(f)
-        _is_http_response = is_http_response(f)
+    def _compile_schema(self, schema):
+        return self.schema_compiler.compile(schema)
+
+    def _hrpc_decorator(self, f, method_info):
+        _is_http_request = method_info.is_http_request
+        _is_http_response = method_info.is_http_response
+        method = method_info.name
+
         if _is_http_request and _is_http_response:
             return f
 
-        if _is_http_request:
+        if method_info.params is None:
             params_validator = None
         else:
-            params_validator = self._get_params_validator(f)
-        if _is_http_response:
-            result_validator = None
+            params_validator = self._compile_schema(method_info.params)
+        if method_info.returns is None:
+            returns_validator = None
         else:
-            result_validator = self._get_result_validator(f)
+            returns_validator = self._compile_schema(method_info.returns)
 
         async def wrapper(service, http_request):
             # prepare request
@@ -133,20 +209,20 @@ class Service:
 
             # call method
             if _is_http_request:
-                result = await f(service, http_request)
+                returns = await f(service, http_request)
             else:
-                result = await f(service, **params)
+                returns = await f(service, **params)
 
             # process response
             if _is_http_response:
-                return result
+                return returns
             else:
-                if result_validator is not None:
+                if returns_validator is not None:
                     try:
-                        result = result_validator(result)
+                        returns = returns_validator(returns)
                     except Invalid as ex:
                         raise InvalidResult(str(ex))
-                service.response.result = result
+                service.response.result = returns
                 return service.response.to_http()
 
         return wrapper
@@ -165,34 +241,26 @@ class Service:
         LOG.debug(params)
         return headers, params
 
-    def _get_params_validator(self, f):
-        sig = inspect.signature(f)
-        params_schema = {}
-        for name, p in sig.parameters.items():
-            if p.annotation is not inspect.Parameter.empty:
-                params_schema[name] = p.annotation
-        if params_schema:
-            return self.schema_compiler.compile(T.dict(params_schema))
-        return None
-
-    def _get_result_validator(self, f):
-        sig = inspect.signature(f)
-        if sig.return_annotation is not inspect.Signature.empty:
-            schema = sig.return_annotation
-            return self.schema_compiler.compile(schema)
-        return None
-
 
 class Method:
 
-    def __init__(self, service_name, service_class, name, handler, tags):
+    def __init__(
+        self, *,
+        service_name,
+        service_class,
+        method_info,
+    ):
         self.service_name = service_name
         self.service_class = service_class
-        self.name = name
-        self.handler = handler
-        self.tags = tags
-        self.is_http_request = is_http_request(tags)
-        self.is_http_response = is_http_response(tags)
+        self.name = method_info.name
+        self.handler = method_info.f
+        self.tags = method_info.tags
+        self.doc = method_info.doc
+        self.is_http_request = method_info.is_http_request
+        self.is_http_response = method_info.is_http_response
+        self.params = method_info.params
+        self.returns = method_info.returns
+        self.raises = method_info.raises
 
     def __repr__(self):
         return f'<Method {self.service_name}.{self.name}>'
