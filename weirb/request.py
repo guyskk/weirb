@@ -211,7 +211,7 @@ class RequestBodyMixin:
             if not self.is_json:
                 msg = ('The request has no JSON data, or missing JSON '
                        'content-type header, eg: application/json')
-                raise ValueError(msg)
+                raise BadRequest(msg)
             content = await self.content()
             try:
                 self._json = json.loads(content)
