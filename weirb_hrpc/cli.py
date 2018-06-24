@@ -13,8 +13,10 @@ from . import App
 from .error import ConfigError, AppNotFound
 from .helper import get_current_app_name
 from .shell import HrpcShell
+from .generator import HrpcGenerator
 
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_TEMPLATE = Path(__file__).parent / 'project-template'
+DOCS_TEMPLATE = Path(__file__).parent / 'docs-template'
 
 
 @click.group()
@@ -52,13 +54,21 @@ def new(ctx, name, simple=False):
     click.echo(f'directory {str(path)!r} created')
     module_name = name.replace('-', '_')
     if simple:
-        src = PROJECT_ROOT / 'example' / 'hello.py'
+        src = PROJECT_TEMPLATE / 'hello.py'
         dst = path / f'{module_name}.py'
         shutil.copy(src, dst)
+        click.echo('simple layout created')
     else:
-        src = PROJECT_ROOT / 'example' / 'echo'
+        src = PROJECT_TEMPLATE / 'echo'
         dst = path / module_name
         shutil.copytree(src, dst)
+        click.echo('standard layout created')
+    docs_path = path / 'docs'
+    shutil.copytree(DOCS_TEMPLATE, docs_path)
+    click.echo(f'directory {str(docs_path)!r} created')
+    # simiki require content dir and output dir
+    (docs_path / 'content').mkdir(exist_ok=True)
+    (docs_path / 'output').mkdir(exist_ok=True)
     click.echo('done!')
 
 
@@ -134,6 +144,29 @@ def shell(ctx, name=None):
     """Run app shell, use `--<key>=<value>` to set config"""
     app = _create_app(ctx, name)
     HrpcShell(app).start()
+
+
+@cli.command()
+@click.option('--name', type=str, required=False,
+              help='App name')
+@click.pass_context
+def gen(ctx, name=None):
+    """Generate docs and meta data"""
+    app = _create_app(ctx, name)
+    generator = HrpcGenerator(app)
+    generator.gen_meta()
+    generator.gen_docs()
+
+
+@cli.command()
+@click.pass_context
+def doc(ctx):
+    """Preview docs"""
+    os.chdir('docs')
+    exit_code = os.system('simiki g')
+    if exit_code != 0:
+        return
+    os.system('simiki p')
 
 
 if __name__ == '__main__':

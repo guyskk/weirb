@@ -26,6 +26,7 @@ class App:
     def __init__(self, import_name, **cli_config):
         self.import_name = import_name
         self._load_config_module()
+        self._load_intro()
         self._load_plugins()
         self._load_schema_compiler()
         self._load_config_class()
@@ -47,6 +48,12 @@ class App:
                 self.config_module = import_module(self.import_name)
             except ImportError:
                 pass
+
+    def _load_intro(self):
+        if hasattr(self.config_module, 'intro'):
+            self.intro = self.config_module.intro or ''
+        else:
+            self.intro = ''
 
     def _load_plugins(self):
         if hasattr(self.config_module, 'plugins'):

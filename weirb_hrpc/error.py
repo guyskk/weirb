@@ -30,20 +30,34 @@ class HrpcError(WeirbHrpcError):
 
 
 class MethodNotFound(HrpcError):
+    """Method not found in relevant service"""
     code = 'Hrpc.Client.MethodNotFound'
 
 
 class InvalidRequest(HrpcError):
+    """Request format invalid"""
     code = 'Hrpc.Client.InvalidRequest'
 
 
 class InvalidParams(HrpcError):
+    """Request params invalid"""
     code = 'Hrpc.Client.InvalidParams'
 
 
 class InternalError(HrpcError):
+    """Service internal error"""
     code = 'Hrpc.Server.InternalError'
 
 
 class InvalidResult(HrpcError):
+    """Service response an invalid result"""
     code = 'Hrpc.Server.InvalidResult'
+
+
+BUILTIN_HRPC_ERRORS = [
+    MethodNotFound,
+    InvalidRequest,
+    InvalidParams,
+    InternalError,
+    InvalidResult,
+]

@@ -7,6 +7,8 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.6"
+simiki = "^1.6"
+mako = "^1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.5"

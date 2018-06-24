@@ -1,4 +1,13 @@
 [[package]]
+name = "argh"
+version = "0.26.2"
+description = "An unobtrusive argparse wrapper with natural syntax"
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[[package]]
 name = "atomicwrites"
 version = "1.1.5"
 description = "Atomic file writes."
@@ -28,6 +37,55 @@ platform = "UNKNOWN"
 [package.requirements]
 platform = "win32"
 [[package]]
+name = "docopt"
+version = "0.6.1"
+description = "Pythonic argument parser, that will make you smile"
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[[package]]
+name = "jinja2"
+version = "2.7.3"
+description = "A small but fast and easy to use stand-alone template engine written in pure python."
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[package.dependencies]
+markupsafe = "*"
+[[package]]
+name = "mako"
+version = "1.0.7"
+description = "A super-fast templating language that borrows the  best ideas from the existing templating languages."
+category = "main"
+optional = false
+python-versions = "*"
+platform = "*"
+
+[package.dependencies]
+MarkupSafe = ">=0.9.2"
+[[package]]
+name = "markdown"
+version = "2.6.8"
+description = "Python implementation of Markdown."
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[[package]]
+name = "markupsafe"
+version = "1.0"
+description = "Implements a XML/HTML/XHTML Markup safe string for Python"
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[[package]]
 name = "more-itertools"
 version = "4.2.0"
 description = "More routines for operating on iterables, beyond itertools"
@@ -38,6 +96,24 @@ platform = "*"
 
 [package.dependencies]
 six = ">=1.0.0,<2.0.0"
+[[package]]
+name = "ordereddict"
+version = "1.1"
+description = "A drop-in substitute for Py2.7's new collections.OrderedDict that works in Python 2.4-2.6."
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[[package]]
+name = "pathtools"
+version = "0.1.2"
+description = "File system general utilities"
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
 [[package]]
 name = "pluggy"
 version = "0.6.0"
@@ -55,6 +131,15 @@ category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 platform = "unix"
+
+[[package]]
+name = "pygments"
+version = "1.6"
+description = "Pygments is a syntax highlighting package written in Python."
+category = "main"
+optional = false
+python-versions = "*"
+platform = "any"
 
 [[package]]
 name = "pytest"
@@ -75,6 +160,24 @@ setuptools = "*"
 six = ">=1.10.0"
 py = ">=1.5.0"
 [[package]]
+name = "pytz"
+version = "2015.7"
+description = "World timezone definitions, modern and historical"
+category = "main"
+optional = false
+python-versions = "*"
+platform = "Independant"
+
+[[package]]
+name = "pyyaml"
+version = "3.11"
+description = "YAML parser and emitter for Python"
+category = "main"
+optional = false
+python-versions = "*"
+platform = "Any"
+
+[[package]]
 name = "setuptools"
 version = "39.2.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
@@ -84,6 +187,25 @@ python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*"
 platform = "*"
 
 [[package]]
+name = "simiki"
+version = "1.6.2.1"
+description = "Simiki is a simple wiki framework, written in Python."
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[package.dependencies]
+Markdown = "2.6.8"
+Pygments = "1.6"
+Jinja2 = "2.7.3"
+PyYAML = "3.11"
+docopt = "0.6.1"
+ordereddict = "1.1"
+watchdog = "0.8.3"
+pytz = "2015.7"
+tzlocal = "1.2"
+[[package]]
 name = "six"
 version = "1.11.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -92,18 +214,57 @@ optional = false
 python-versions = "*"
 platform = "*"
 
+[[package]]
+name = "tzlocal"
+version = "1.2"
+description = "tzinfo object for the local timezone"
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[package.dependencies]
+pytz = "*"
+[[package]]
+name = "watchdog"
+version = "0.8.3"
+description = "Filesystem events monitoring"
+category = "main"
+optional = false
+python-versions = "*"
+platform = "UNKNOWN"
+
+[package.dependencies]
+PyYAML = ">=3.10"
+argh = ">=0.24.1"
+pathtools = ">=0.1.1"
+
 [metadata]
 python-versions = ">=3.6"
 platform = "*"
-content-hash = "0f906ad2c4d91bc59c950b28ba31417707fdfd37e58b10b8ba876dabfec40637"
+content-hash = "ebdfac4c87c007a05f65c100faae0cabdc6bbd274beec5ae825a60a93a7f562f"
 
 [metadata.hashes]
+argh = [ "a9b3aaa1904eeb78e32394cd46c6f37ac0fb4af6dc488daa58971bdc7d7fcaf3", "e9535b8c84dc9571a48999094fda7f33e63c3f1b74f3e5f3ac0105a58405bb65",]
 atomicwrites = [ "a24da68318b08ac9c9c45029f4a10371ab5b20e4226738e150e6e7c571630ae6", "240831ea22da9ab882b551b31d4225591e5e447a68c5e188db5b89ca1d487585",]
 attrs = [ "4b90b09eeeb9b88c35bc642cbac057e45a5fd85367b985bd2809c62b7b939265", "e0d0eb91441a3b53dab4d9b743eafc1ac44476296a2053b6ca3af0b139faf87b",]
 colorama = [ "463f8483208e921368c9f306094eb6f725c6ca42b0f97e313cb5d5512459feda", "48eb22f4f8461b1df5734a074b57042430fb06e1d61bd1e11b078c0fe6d7a1f1",]
+docopt = [ "71ad940a773fbc23be6093e9476ad57b2ecec446946a28d30127501f3b29aa35",]
+jinja2 = [ "2e24ac5d004db5714976a04ac0e80c6df6e47e98c354cb2c0d82f8879d4f8fdb",]
+mako = [ "4e02fde57bd4abb5ec400181e4c314f56ac3e49ba4fb8b0d50bba18cb27d25ae",]
+markdown = [ "0ac8a81e658167da95d063a9279c9c1b2699f37c7c4153256a458b3a43860e33",]
+markupsafe = [ "a6be69091dac236ea9c6bc7d012beab42010fa914c459791d627dad4910eb665",]
 more-itertools = [ "a18d870ef2ffca2b8463c0070ad17b5978056f403fb64e3f15fe62a52db21cc0", "6703844a52d3588f951883005efcf555e49566a48afd4db4e965d69b883980d3", "2b6b9893337bfd9166bee6a62c2b0c9fe7735dcf85948b387ec8cba30e85d8e8",]
+ordereddict = [ "1c35b4ac206cef2d24816c89f89cf289dd3d38cf7c449bb3fab7bf6d43f01b1f",]
+pathtools = [ "7c35c5421a39bb82e58018febd90e3b6e5db34c5443aaaf742b3f33d4655f1c0",]
 pluggy = [ "d345c8fe681115900d6da8d048ba67c25df42973bda370783cd58826442dcd7c", "e160a7fcf25762bb60efc7e171d4497ff1d8d2d75a3d0df7a21b76821ecbf5c5", "7f8ae7f5bdf75671a718d2daf0a64b7885f74510bcd98b1a0bb420eb9a9d0cff",]
 py = [ "983f77f3331356039fdd792e9220b7b8ee1aa6bd2b25f567a963ff1de5a64f6a", "29c9fab495d7528e80ba1e343b958684f4ace687327e6f789a94bf3d1915f881",]
+pygments = [ "8f2d2fcef78d32292be95f460fcab6ebe65273a59cda6042fa4657e491b69d14", "e34c30aa9941b0b48272a4daca73beded432570c535a229554b187c11e535d7e", "799ed4caf77516e54440806d8d9cd82a7607dfdf4e4fb643815171a4b5c921c0",]
 pytest = [ "90898786b3d0b880b47645bae7b51aa9bbf1e9d1e4510c2cfd15dd65c70ea0cd", "8ea01fc4fcc8e1b1e305252b4bc80a1528019ab99fd3b88666c9dc38d754406c",]
+pytz = [ "3abe6a6d3fc2fbbe4c60144211f45da2edbe3182a6f6511af6bbba0598b1f992", "939ef9c1e1224d980405689a97ffcf7828c56d1517b31d73464356c1f2b7769e", "ead4aefa7007249e05e51b01095719d5a8dd95760089f5730aac5698b1932918", "3cca0df08bd0ed98432390494ce3ded003f5e661aa460be7a734bffe35983605", "3ede470d3d17ba3c07638dfa0d10452bc1b6e5ad326127a65ba77e6aaeb11bec", "68c47964f7186eec306b13629627722b9079cd4447ed9e5ecaecd4eac84ca734", "dd5d3991950aae40a6c81de1578942e73d629808cefc51d12cd157980e6cfc18", "a77c52062c07eb7c7b30545dbc73e32995b7e117eea750317b5cb5c7a4618f14", "81af9aec4bc960a9a0127c488f18772dae4634689233f06f65443e7b11ebeb51", "e079b1dadc5c06246cc1bb6fe1b23a50b1d1173f2edd5104efd40bb73a28f406", "fbd26746772c24cb93c8b97cbdad5cb9e46c86bbdb1b9d8a743ee00e2fb1fc5d", "99266ef30a37e43932deec2b7ca73e83c8dbc3b9ff703ec73eca6b1dae6befea", "8b6ce1c993909783bc96e0b4f34ea223bff7a4df2c90bdb9c4e0f1ac928689e3",]
+pyyaml = [ "c36c938a872e5ff494938b33b14aaa156cb439ec67548fcab3535bb78b0846e8", "e3bc2528c3a0f396908b5f8784795f3f7b62e8b2573c2db736addccfb22449e4", "ca129663271174f9783e1177195e4288945a504db89f5c3889da75e0abbd0a67", "d44be6e77802ea845911e000e29d781ba2900a0fe3b38fc0f5b74f5f77d2e4f0", "2abbe0b237b42e075e5a59f90766c0a18cc29aea3baa7a152cc16f62fa556daa", "ad55a89cc264b74be59df9fdcea1dffd14f435d955eae2ac822a28563be2fe48", "e25c2074189eb72056778c88344f47e5e7378afd52da62014bb3e86efce947c1", "b54b4782da60c7dfe5d850524416dd03f3b9a516ed476ce1d5a2712cde75d683", "2db3d4c54d3eb47ad7169806e684d5243d4a14749cb9741ef5d1ac3291d67a1a", "3e8c104861b5839a36e6b30c2f964d6fbf4a2e2b87ae9c289da699b21e35c91b", "7a02d22209e41ba55bd8a65fa69ee593af30a857f6e33fc9c80589e6b477c36b", "d9b72815d3cdc5e1c3f1f44498a5e884fe4dcdb3f6428fa086e35af8160d2809", "c81b0cccf6b6bfc0432c1a96c07b64b76472118ec789bc4891447cc5298bd1c7", "19bb3ac350ef878dda84a62d37c7d5c17a137386dde9c2ce7249c7a21d7f6ac9",]
 setuptools = [ "8fca9275c89964f13da985c3656cb00ba029d7f3916b37990927ffdf264e7926", "f7cddbb5f5c640311eb00eab6e849f7701fa70bf6a183fc8a2c33dd1d1672fb2",]
+simiki = [ "916a4f79e36051b6cc13e092c062914a6336a7b2224973964c4bc67b8f28d6cb", "e3d00bfaacf76c8b0773dac1e48bfb0b295622f12021b47ea861d43462de5b9c",]
 six = [ "832dc0e10feb1aa2c68dcc57dbb658f1c7e65b9b61af69048abc87a2db00a0eb", "70e8a77beed4562e7f14fe23a786b54f6296e34344c23bc42f07b15018ff98e9",]
+tzlocal = [ "438f122d684c951b22cb98aecc80fdb961b84e69542bf878c6b9a9419de09a8b",]
+watchdog = [ "7e65882adb7746039b6f3876ee174952f8eaaa34491ba34333ddf1fe35de4162",]
