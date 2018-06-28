@@ -3,10 +3,11 @@ from .error import DependencyError
 
 class Context:
 
-    def __init__(self, config, contexts, handler=None):
-        self._config = config
-        self._contexts = [c(self) for c in contexts]
-        self._handler = handler
+    def __init__(self, app):
+        self.config = app.config
+        self._config = app._config_dict
+        self._contexts = [c(self) for c in app.contexts]
+        self._handler = app._handler
         self._container = {}
         self._providers = {}
 
@@ -28,8 +29,8 @@ class Context:
         else:
             self._container[key] = value
 
-    async def __call__(self, request):
-        return await self._handler(self, request)
+    async def __call__(self, raw_request):
+        return await self._handler(self, raw_request)
 
     async def __aenter__(self):
         error = None

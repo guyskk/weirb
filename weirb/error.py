@@ -11,6 +11,14 @@ class ConfigError(WeirbError):
     """Config Error"""
 
 
+class DependencyError(WeirbError):
+    """Dependency Error"""
+
+
+class AppNotFound(WeirbError):
+    """App Not Fount"""
+
+
 class HttpError(WeirbError):
     """Base class of http errors"""
 
@@ -53,3 +61,43 @@ def _init_http_errors():
 
 _init_http_errors()
 del _init_http_errors
+
+
+class HrpcError(WeirbError):
+    """Base class for HRPC Errors"""
+
+    status = code = None
+
+    def __init__(self, message=None, data=None):
+        if self.status is None or self.code is None:
+            raise RuntimeError(f'{type(self).__name__} can not instantiated')
+        self.message = message or type(self).__doc__
+        self.data = data
+
+    def __repr__(self):
+        return f'<{type(self).__name__} {self.status}:{self.code}>'
+
+
+class HrpcInvalidRequest(HrpcError):
+    """Request format invalid"""
+    status = 400
+    code = 'Hrpc.InvalidRequest'
+
+
+class HrpcInvalidParams(HrpcError):
+    """Request params invalid"""
+    status = 400
+    code = 'Hrpc.InvalidParams'
+
+
+class HrpcServerError(HrpcError):
+    """Service internal server error"""
+    status = 500
+    code = 'Hrpc.ServerError'
+
+
+BUILTIN_HRPC_ERRORS = [
+    HrpcInvalidRequest,
+    HrpcInvalidParams,
+    HrpcServerError,
+]

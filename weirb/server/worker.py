@@ -1,9 +1,9 @@
 import logging
 from newio import spawn
 
-from .error import HttpError, InternalServerError
+from ..error import HttpError, InternalServerError
+from ..helper import stream
 from .response import AbstractResponse
-from .helper import stream
 
 LOG = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class ErrorResponse(AbstractResponse):
         self.keep_alive = None
 
     def __repr__(self):
-        return f'<{type(self).__name__} {self.status}: {self._error.message}>'
+        return f'<{type(self).__name__} {self.status}:{self._error.message}>'
 
 
 class Worker:

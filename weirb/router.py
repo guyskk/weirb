@@ -1,6 +1,5 @@
 import logging
-from weirb.error import NotFound, MethodNotAllowed
-from .error import MethodNotFound
+from .error import NotFound
 
 LOG = logging.getLogger(__name__)
 
@@ -14,7 +13,7 @@ class Router:
                 methods[m.name.lower()] = m
         self.prefix = url_prefix.rstrip('/') + '/'
 
-    def lookup(self, http_method, path):
+    def lookup(self, path):
         path = path.lower()
         if not path.startswith(self.prefix):
             raise NotFound()
@@ -28,9 +27,5 @@ class Router:
             raise NotFound()
         methods = self.table[service]
         if method not in methods:
-            raise MethodNotFound()
-        service_method = methods[method]
-        if not service_method.is_http_request:
-            if http_method != 'POST':
-                raise MethodNotAllowed()
-        return service_method
+            raise NotFound()
+        return methods[method]

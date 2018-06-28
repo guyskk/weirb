@@ -1,27 +1,11 @@
+import inspect
+import json
 from http import HTTPStatus
-from typing import List, Tuple, AsyncIterable, Any
-from zope.interface import Interface, Attribute, implementer
 from werkzeug.http import dump_cookie
 from werkzeug.datastructures import Headers
 
-from .error import HttpError
-from .helper import stream
-from .const import HTTP_REDIRECT_STATUS
-
-
-class IResponse(Interface):
-    status: int = Attribute('Status code')
-    status_text: str = Attribute('Status text')
-    version: str = Attribute('HTTP version')
-    headers: List[Tuple[str, Any]] = Attribute('Response headers')
-    body: AsyncIterable = Attribute('Response body')
-    chunked: bool = Attribute('Is chunked or not')
-    keep_alive: bool = Attribute('Is keep alive or not')
-
-
-@implementer(IResponse)
-class AbstractResponse:
-    """Abstract Response"""
+from .server import AbstractResponse
+from .helper import stream, HTTP_REDIRECT_STATUS
 
 
 class ResponseCookieMixin:
@@ -86,7 +70,9 @@ class ResponseRedirectMixin:
 
 
 class Response(AbstractResponse, ResponseCookieMixin, ResponseRedirectMixin):
-    def __init__(self, status=200, *, version=None, headers=None, body=None):
+    def __init__(self, context, *, status=200, version=None, headers=None, body=None):
+        super().__init__()
+        self.context = context
         self._status = HTTPStatus(status)
         self.version = version or 'HTTP/1.1'
         if headers is None:
@@ -119,8 +105,26 @@ class Response(AbstractResponse, ResponseCookieMixin, ResponseRedirectMixin):
         elif isinstance(value, bytes):
             self._body = stream(value)
             self.content_length = len(value)
-        else:
+        elif isinstance(value, str):
+            value = value.encode('utf-8')
+            self._body = stream(value)
+            self.content_length = len(value)
+        elif inspect.isasyncgen(value):
             self._body = value
+        else:
+            msg = (f'response body should be bytes, str or async generator, '
+                   f'type {type(value).__name__} is not supported')
+            raise ValueError(msg)
+
+    def json(self, value):
+        sort_keys = self.context.config.response_json_sort_keys
+        indent = None
+        if self.context.config.response_json_pretty:
+            indent = 4
+        text = json.dumps(
+            value, ensure_ascii=False, indent=indent, sort_keys=sort_keys)
+        self.body = text.encode('utf-8')
+        self.headers['Content-Type'] = 'application/json;charset=utf-8'
 
     @property
     def chunked(self):

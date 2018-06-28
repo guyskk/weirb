@@ -14,27 +14,21 @@ import signal
 import time
 from multiprocessing import Process
 
-from validr import Invalid
 from newio import socket, spawn
 from newio_kernel import run as run_task
 from gunicorn.reloader import Reloader
 import coloredlogs
 
-from .error import ConfigError
-from .config import Config
 from .parser import RequestParser
 from .worker import Worker
 
-__all__ = ('run',)
+__all__ = ('serve',)
+
 
 LOG = logging.getLogger(__name__)
 
 
-def run(app, **config):
-    try:
-        config = Config(**config)
-    except Invalid as ex:
-        raise ConfigError(ex.message) from None
+def serve(app, config):
     server = Server(app, config)
     server.run()
 

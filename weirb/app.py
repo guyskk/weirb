@@ -6,13 +6,10 @@ from importlib import import_module
 import toml
 from terminaltables import SingleTable
 from validr import modelclass, Invalid, Compiler, fields, asdict
-from weirb import run
-from weirb import Request as HttpRequest
-from weirb import Config as ServerConfig
-from weirb.error import HttpError
 
-from .error import ConfigError, DependencyError, HrpcError, InternalError
-from .response import ErrorResponse
+from .server import serve
+from .request import Request
+from .error import ConfigError, DependencyError
 from .context import Context
 from .helper import import_all_modules
 from .config import InternalConfig, INTERNAL_VALIDATORS
@@ -139,31 +136,21 @@ class App:
             self.services.append(s)
 
     def context(self):
-        return Context(self._config_dict, self.contexts, self._handler)
+        return Context(self)
 
     async def _handler(self, context, raw_request):
-        http_request = HttpRequest(raw_request)
-        try:
-            method = self.router.lookup(http_request.method, http_request.path)
-            http_response = await method(context, http_request)
-        except HrpcError as ex:
-            http_response = ErrorResponse(ex).to_http()
-        except HttpError:
-            raise
-        except Exception as ex:
-            LOG.error('Error raised when handle request:', exc_info=ex)
-            http_response = ErrorResponse(InternalError()).to_http()
-        return http_response
+        request = Request(context, raw_request)
+        handler = self.router.lookup(request.path)
+        return await handler(context, request)
 
-    def run(self):
+    def serve(self):
         if self.config.print_config:
             self.print_config()
         if self.config.print_plugin:
             self.print_plugin()
         if self.config.print_service:
             self.print_service()
-        server_config = asdict(self.config, keys=fields(ServerConfig))
-        run(self, **server_config)
+        serve(self, self.config)
 
     def print_config(self):
         table = [('Key', 'Value', 'Schema')]

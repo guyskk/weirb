@@ -18,9 +18,7 @@ ${method['doc'] or 'No Doc'}
 
 Params:
 ```
-    %if method['is_http_request']:
-HttpRequest
-    %elif method['params'] is None:
+    %if method['params'] is None:
 No Params
     %else:
 ${method['params']}
@@ -29,9 +27,7 @@ ${method['params']}
 
 Returns:
 ```
-    %if method['is_http_response']:
-HttpResponse
-    %elif method['params'] is None:
+    %if method['params'] is None:
 No Returns
     %else:
 ${method['returns']}

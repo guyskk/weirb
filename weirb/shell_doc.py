@@ -88,9 +88,7 @@ def format_service_doc(service):
 def format_method_doc(method):
     head = _format_head(method.doc)
 
-    if method.is_http_request:
-        params = ['Params: HttpRequest\n']
-    elif method.params is None:
+    if method.params is None:
         params = ['Params: No Params\n']
     else:
         params = ['Params:\n']
@@ -98,9 +96,7 @@ def format_method_doc(method):
             params.append(f'    {k}: {v.repr()}\n')
     params = ''.join(params)
 
-    if method.is_http_response:
-        returns = ['Returns: HttpResponse\n']
-    elif method.returns is None:
+    if method.returns is None:
         returns = ['Returns: No Returns\n']
     else:
         if method.returns.validator == 'dict':

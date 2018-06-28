@@ -19,16 +19,28 @@ PROJECT_TEMPLATE = Path(__file__).parent / 'project-template'
 DOCS_TEMPLATE = Path(__file__).parent / 'docs-template'
 
 
-@click.group()
+class AliasedGroup(click.Group):
+
+    def get_command(self, ctx, cmd_name):
+        if cmd_name == 's':
+            cmd_name = 'serve'
+        return click.Group.get_command(self, ctx, cmd_name)
+
+
+@click.group(cls=AliasedGroup)
 def cli():
-    """Weirb HRPC CLI"""
+    """Weirb CLI"""
 
 
-def _dynamic_command():
+def dynamic_command():
     return cli.command(context_settings=dict(
         allow_extra_args=True,
         ignore_unknown_options=True
     ))
+
+
+def option_app_name():
+    return click.option('--name', type=str, required=False, help='App name')
 
 
 @cli.command()
@@ -126,29 +138,26 @@ def _create_app(ctx, name):
     return app
 
 
-@_dynamic_command()
-@click.option('--name', type=str, required=False,
-              help='App name')
+@dynamic_command()
+@option_app_name()
 @click.pass_context
-def run(ctx, name=None):
-    """Run app server, use `--<key>=<value>` to set config"""
+def serve(ctx, name=None):
+    """Start app server, use `--<key>=<value>` to set config"""
     app = _create_app(ctx, name)
-    app.run()
+    app.serve()
 
 
-@_dynamic_command()
-@click.option('--name', type=str, required=False,
-              help='App name')
+@dynamic_command()
+@option_app_name()
 @click.pass_context
 def shell(ctx, name=None):
-    """Run app shell, use `--<key>=<value>` to set config"""
+    """Start app shell, use `--<key>=<value>` to set config"""
     app = _create_app(ctx, name)
     HrpcShell(app).start()
 
 
 @cli.command()
-@click.option('--name', type=str, required=False,
-              help='App name')
+@option_app_name()
 @click.pass_context
 def gen(ctx, name=None):
     """Generate docs and meta data"""

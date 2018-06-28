@@ -40,8 +40,6 @@ class HrpcGenerator:
                     'params': None if m.params is None else str(m.params),
                     'returns': None if m.returns is None else str(m.returns),
                     'raises': self._format_errors(m.raises),
-                    'is_http_request': m.is_http_request,
-                    'is_http_response': m.is_http_response,
                 })
             self.services.append({
                 'name': s.name,

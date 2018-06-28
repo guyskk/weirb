@@ -4,14 +4,14 @@ from urllib.parse import unquote
 import httptools
 from newio import timeout_after
 
-from .request import RawRequest
-from .error import (
+from ..error import (
     BadRequest,
     RequestHeaderFieldsTooLarge,
     RequestEntityTooLarge,
     LengthRequired,
     RequestTimeout,
 )
+from .request import RawRequest
 
 LOG = logging.getLogger(__name__)
 
