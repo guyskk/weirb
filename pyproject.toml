@@ -3,6 +3,7 @@ name = "weirb"
 version = "0.1.0"
 description = "weirb"
 authors = ["guyskk <guyskk@qq.com>"]
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.6"
@@ -13,8 +14,12 @@ httptools = "^0.0.11"
 coloredlogs = "^10.0"
 "zope.interface" = "^4.5"
 werkzeug = "^0.14.1"
+simiki = "^1.6"
+mako = "^1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
 pytest-cov = "^2.5"
 
+[tool.poetry.scripts]
+hrpc = 'weirb_hrpc.cli:cli'
