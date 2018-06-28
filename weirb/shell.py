@@ -27,7 +27,7 @@ def _enable_completer(context):
     except ImportError:
         return
     readline.set_completer(rlcompleter.Completer(context).complete)
-    readline.parse_and_bind("tab:complete")
+    readline.parse_and_bind('tab:complete')
     # command history
     if os.path.exists(HISTORY_PATH):
         readline.read_history_file(HISTORY_PATH)

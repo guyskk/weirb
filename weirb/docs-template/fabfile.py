@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 from __future__ import print_function, absolute_import, with_statement
 
 import os
@@ -60,8 +59,8 @@ if rsync_configs:
 def deploy_rsync(deploy_configs):
     """for rsync"""
     project.rsync_project(
-        local_dir=env.local_output.rstrip("/") + "/",
-        remote_dir=env.remote_output.rstrip("/") + "/",
+        local_dir=env.local_output.rstrip('/') + '/',
+        remote_dir=env.remote_output.rstrip('/') + '/',
         delete=env.rsync_delete
     )
 
@@ -187,11 +186,11 @@ def commit():
                     _ans = raw_input('\n{0}\nAdd these files to index? (y/N) '
                                      .format(test_res.strip()))
                     if _ans.lower() in yes_ans:
-                        local("git add {0}".format(add_file))
+                        local('git add {0}'.format(add_file))
                 except (KeyboardInterrupt, SystemExit):
                     pass
             else:
-                local("git add {0}".format(add_file))
+                local('git add {0}'.format(add_file))
 
         # Changes in the index to commit
         res = local('git diff --cached --quiet --exit-code; echo $?',

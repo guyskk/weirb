@@ -1,8 +1,8 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='weirb',
-    version='0.2',
+    version='0.2.0',
     description='Weird Web Framework',
     url='https://github.com/guyskk/weirb',
     author='guyskk',
@@ -14,11 +14,13 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.6',
     ],
-    packages=['weirb'],
+    packages=find_packages(exclude=[
+        'tests',
+    ]),
     python_requires='>=3.6',
     install_requires=[
-        'newio>=0.4',
-        'newio-kernel>=0.4',
+        'newio>=0.4.1',
+        'newio-kernel>=0.4.1',
         'toml>=0.9.4',
         'click>=6.7',
         'gunicorn>=19.8',
@@ -29,6 +31,17 @@ setup(
         'simiki>=1.6',
         'mako>=1.0',
     ],
+    extras_require={
+        'dev': [
+            'invoke==1.0.0',
+            'pytest==3.6.1',
+            'pytest-cov==2.5.1',
+            'coloredlogs==10.0',
+            'twine==1.11.0',
+            'pre-commit==1.10.2',
+            'codecov==2.0.15',
+        ],
+    },
     entry_points={
         'console_scripts': [
             'weirb=weirb.cli:cli',

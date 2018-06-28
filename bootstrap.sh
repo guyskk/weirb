@@ -1,7 +1,5 @@
 #! /bin/bash
 set -ex
 
-pip install -r requires-dev.txt
-pip install -e .
-
+pip install -e .[dev]
 pre-commit install

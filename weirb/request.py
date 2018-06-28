@@ -262,8 +262,8 @@ class Request(RequestUrlMixin, RequestHeadersMixin, RequestBodyMixin):
         if not self._xheaders:
             return self.raw.remote_ip
         return (
-            self.headers.get("X-Real-Ip") or
-            self.headers.get("X-Forwarded-For") or
+            self.headers.get('X-Real-Ip') or
+            self.headers.get('X-Forwarded-For') or
             self.raw.remote_ip
         )
 
@@ -271,7 +271,7 @@ class Request(RequestUrlMixin, RequestHeadersMixin, RequestBodyMixin):
     def protocol(self):
         if not self._xheaders:
             return self.raw.protocol
-        return self.headers.get("X-Scheme") or self.raw.protocol
+        return self.headers.get('X-Scheme') or self.raw.protocol
 
     @property
     def keep_alive(self):

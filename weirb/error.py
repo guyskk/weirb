@@ -26,7 +26,7 @@ class HttpError(WeirbError):
 
     def __init__(self, message=None):
         if self.status is None or self.phrase is None:
-            msg = f"{type(self).__name__} can not be instantiated"
+            msg = f'{type(self).__name__} can not be instantiated'
             raise RuntimeError(msg)
         s = HTTPStatus(self.status)
         self.message = message or s.description

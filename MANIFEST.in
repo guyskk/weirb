@@ -1,0 +1,2 @@
+include weirb/generator/*.mako
+recursive-include weirb/docs-template *
