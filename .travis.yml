@@ -4,6 +4,9 @@ python:
   - "3.6"
   - "nightly"
 
+matrix:
+  - python: "nightly"
+
 install:
   - ./bootstrap.sh
 
@@ -11,10 +14,9 @@ script:
   - pre-commit run --all-files
   - pytest --cov weirb
   # test install
-  - cd $TRAVIS_BUILD_DIR
   - inv build
   - pip install --ignore-installed dist/*
-  - cd /tmp && pytest $TRAVIS_BUILD_DIR/tests
+  - pytest
 
 after_success:
   - codecov
