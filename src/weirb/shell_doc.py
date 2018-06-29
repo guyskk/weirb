@@ -1,8 +1,9 @@
 import re
 import textwrap
-from validr import T, Compiler
+from validr import T
 
-from .service import Service
+from .app import App
+from .service import Method, route
 
 
 class _DocumentSampleService:
@@ -11,6 +12,10 @@ class _DocumentSampleService:
     Creates a channel from a multiprocessing Connection. Note: The
     multiprocessing connection is detached by having its handle set to None.
     """
+
+    @route.get('/document/sample/a')
+    async def view_a(self):
+        """A simple view"""
 
     async def method_a(self):
         """A Simple Hello"""
@@ -77,53 +82,57 @@ def _format_head(doc):
 
 def format_service_doc(service):
     head = _format_head(service.doc)
-    if service.methods:
-        methods = ', '.join(m.name for m in service.methods)
-        methods = f'Methods: {methods}\n'
+    if service.handlers:
+        handlers = ', '.join(m.name for m in service.handlers)
+        handlers = f'Handlers: {handlers}\n'
     else:
-        methods = f'Methods: No Methods\n'
-    return f'{head}\n{methods}'
+        handlers = f'Handlers: No Handlers\n'
+    return f'{head}\n{handlers}'
 
 
-def format_method_doc(method):
-    head = _format_head(method.doc)
+def format_handler_doc(handler):
+    ret = [
+        _format_head(handler.doc),
+    ]
+    if isinstance(handler, Method):
 
-    if method.params is None:
-        params = ['Params: No Params\n']
-    else:
-        params = ['Params:\n']
-        for k, v in method.params.items.items():
-            params.append(f'    {k}: {v.repr()}\n')
-    params = ''.join(params)
-
-    if method.returns is None:
-        returns = ['Returns: No Returns\n']
-    else:
-        if method.returns.validator == 'dict':
-            returns = ['Returns:\n']
-            for k, v in method.returns.items.items():
-                returns.append(f'    {k}: {v.repr()}\n')
+        if handler.params is None:
+            params = ['Params: No Params\n']
         else:
-            returns = [f'Returns: {method.returns.repr()}\n']
-    returns = ''.join(returns)
+            params = ['Params:\n']
+            for k, v in handler.params.items.items():
+                params.append(f'    {k}: {v.repr()}\n')
+        ret.append(''.join(params))
 
-    if not method.raises:
+        if handler.returns is None:
+            returns = ['Returns: No Returns\n']
+        else:
+            if handler.returns.validator == 'dict':
+                returns = ['Returns:\n']
+                for k, v in handler.returns.items.items():
+                    returns.append(f'    {k}: {v.repr()}\n')
+            else:
+                returns = [f'Returns: {handler.returns.repr()}\n']
+        ret.append(''.join(returns))
+
+    if not handler.raises:
         raises = ['Raises: No Raises\n']
     else:
         raises = ['Raises:\n']
-        for error in method.raises:
+        for error in handler.raises:
             raises.append(f'    {error.code}\n')
-    raises = ''.join(raises)
+    ret.append(''.join(raises))
 
-    return f'{head}\n{params}\n{returns}\n{raises}'
+    return '\n'.join(ret)
 
 
 def main():
-    service = Service(_DocumentSampleService, {}, [], Compiler())
+    app = App(__name__)
+    service = app.services[0]
     print(format_service_doc(service))
-    for method in service.methods:
+    for handler in service.handlers:
         print('-' * 60)
-        print(format_method_doc(method))
+        print(format_handler_doc(handler))
 
 
 if __name__ == '__main__':

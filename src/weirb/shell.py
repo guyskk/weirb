@@ -7,7 +7,7 @@ from newio_kernel import run
 from weirb import RawRequest
 from weirb.error import HttpError
 
-from .shell_doc import format_service_doc, format_method_doc
+from .shell_doc import format_service_doc, format_handler_doc
 
 HISTORY_PATH = os.path.expanduser('~/.weirb-hrpc-history')
 
@@ -108,7 +108,7 @@ class Service:
 class Method:
     def __init__(self, shell, method):
         self._shell = shell
-        self._doc = format_method_doc(method)
+        self._doc = format_handler_doc(method)
         self._service = method.service_name
         self._method = method.name
 
@@ -125,12 +125,12 @@ class Method:
 class HrpcShell:
     def __init__(self, app):
         self.app = app
-        self.url_prefix = app.config.url_prefix
+        self.root_path = app.config.root_path
         self.headers = Headers()
         self.services = {s.name: Service(self, s) for s in app.services}
 
     def _get_endpoint(self, service, method):
-        return f'{self.url_prefix}/{service}/{method}'
+        return f'{self.root_path}/{service}/{method}'
 
     async def _read_response(self, response):
         content = []

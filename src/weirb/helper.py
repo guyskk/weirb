@@ -5,7 +5,7 @@ import importlib
 from .error import AppNotFound
 
 HTTP_REDIRECT_STATUS = [301, 302, 303, 307, 308]
-HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options']
+HTTP_METHODS = {'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
 
 
 async def stream(data):

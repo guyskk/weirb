@@ -38,6 +38,17 @@ class HttpError(WeirbError):
         return f'{self.status} {self.phrase}: {self.message}'
 
 
+class HttpRedirect(HttpError):
+    """Http Redirect, it's not real HttpError"""
+
+    def __init__(self, location, status):
+        self.location = location
+        self.status = status
+        s = HTTPStatus(self.status)
+        self.phrase = s.phrase
+        self.message = s.description
+
+
 HTTP_ERRORS = {}
 
 
@@ -63,7 +74,7 @@ _init_http_errors()
 del _init_http_errors
 
 
-class HrpcError(WeirbError):
+class HrpcError(HttpError):
     """Base class for HRPC Errors"""
 
     status = code = None
@@ -71,6 +82,8 @@ class HrpcError(WeirbError):
     def __init__(self, message=None, data=None):
         if self.status is None or self.code is None:
             raise RuntimeError(f'{type(self).__name__} can not instantiated')
+        s = HTTPStatus(self.status)
+        self.phrase = s.phrase
         self.message = message or type(self).__doc__
         self.data = data
 

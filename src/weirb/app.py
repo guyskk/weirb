@@ -9,7 +9,8 @@ from validr import modelclass, Invalid, Compiler, fields, asdict
 
 from .server import serve
 from .request import Request
-from .error import ConfigError, DependencyError
+from .response import Response
+from .error import ConfigError, DependencyError, HttpRedirect
 from .context import Context
 from .helper import import_all_modules
 from .config import InternalConfig, INTERNAL_VALIDATORS
@@ -31,7 +32,7 @@ class App:
         self._config_dict = asdict(self.config)
         self._active_plugins()
         self._load_services()
-        self.router = Router(self.services, self.config.url_prefix)
+        self.router = Router(self.services, self.config.root_path)
 
     def __repr__(self):
         return f'<App {self.import_name}>'
@@ -128,19 +129,30 @@ class App:
                 raise DependencyError(msg)
 
     def _load_services(self):
-        service_classes = set(_import_services(self.import_name))
+        visited = set()
         self.services = []
-        for cls in service_classes:
-            s = Service(
-                cls, self.provides, self.decorators, self.schema_compiler)
-            self.services.append(s)
+        for module in import_all_modules(self.import_name):
+            for name, obj in vars(module).items():
+                if not inspect.isclass(obj):
+                    continue
+                if obj in visited:
+                    continue
+                if not Service.is_service(name):
+                    continue
+                visited.add(obj)
+                self.services.append(Service(self, obj))
 
     def context(self):
         return Context(self)
 
     async def _handler(self, context, raw_request):
         request = Request(context, raw_request)
-        handler = self.router.lookup(request.path)
+        try:
+            handler = self.router.lookup(request.path)
+        except HttpRedirect as redirect:
+            response = Response(context)
+            response.redirect(redirect.location, redirect.status)
+            return response
         return await handler(context, request)
 
     def serve(self):
@@ -186,24 +198,15 @@ class App:
 
     def print_service(self):
         title = 'Services' if self.services else 'No services'
-        table = [('#', 'Name', 'Methods', 'Requires')]
+        table = [('#', 'Name', 'Handlers', 'Requires')]
         for idx, service in enumerate(self.services, 1):
-            methods = [m.name for m in service.methods]
-            methods = ', '.join(methods)
+            handlers = [m.name for m in service.handlers]
+            handlers = ', '.join(handlers)
             requires = [field.key for field in service.fields.values()]
             requires = ', '.join(requires)
-            table.append((idx, service.name, methods, requires))
+            table.append((idx, service.name, handlers, requires))
         table = SingleTable(table, title=title)
         print(table.table)
-
-
-def _import_services(import_name):
-    suffix = 'Service'
-    for module in import_all_modules(import_name):
-        for name, obj in vars(module).items():
-            is_service = name != suffix and name.endswith(suffix)
-            if is_service and inspect.isclass(obj):
-                yield obj
 
 
 def _shorten(x, w=30):

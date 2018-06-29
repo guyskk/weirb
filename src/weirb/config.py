@@ -31,7 +31,7 @@ INTERNAL_VALIDATORS = dict(
 
 class InternalConfig:
     """Weirb Internal Config"""
-    url_prefix = T.str.optional
+    root_path = T.str.optional
     print_config = T.bool.default(False)
     print_plugin = T.bool.default(False)
     print_service = T.bool.default(False)

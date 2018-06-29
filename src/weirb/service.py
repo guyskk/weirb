@@ -1,10 +1,51 @@
 import inspect
 import logging
+from functools import partial
+
 from validr import T, Invalid
-from weirb.error import BadRequest
+
 from .response import Response
-from .error import HrpcError, HrpcInvalidRequest, HrpcInvalidParams, HrpcServerError
+from .helper import HTTP_METHODS
 from .tagger import tagger
+from .error import (
+    HttpError,
+    HrpcError,
+    HrpcServerError,
+    HrpcInvalidParams,
+    BadRequest,
+    HrpcInvalidRequest,
+)
+
+LOG = logging.getLogger(__name__)
+
+
+def route(path, *, methods, host=None):
+    methods = _normalize_methods(methods)
+    return tagger.stackable_tag('routes', dict(
+        path=path,
+        methods=methods,
+        host=host,
+    ))
+
+
+def _normalize_methods(methods):
+    methods = set(x.upper() for x in methods)
+    unknown = set(methods) - set(HTTP_METHODS)
+    if unknown:
+        raise ValueError(f'unknown methods {unknown!r}')
+    return methods
+
+
+def _build_route():
+    for m in HTTP_METHODS:
+        setattr(route, m.lower(), partial(route, methods=[m]))
+
+
+_build_route()
+del _build_route
+
+
+get_routes = tagger.get('routes')
 
 
 def raises(error):
@@ -12,9 +53,6 @@ def raises(error):
 
 
 get_raises = tagger.get('raises', default=None)
-
-
-LOG = logging.getLogger(__name__)
 
 
 class Dependency:
@@ -42,21 +80,148 @@ class DependencyField:
         return value
 
 
-class MethodInfo:
-    def __init__(self, service_name, name, f):
-        self.service_name = service_name
-        self.name = name
-        self.f = f
-        self.tags = tagger.get_tags(f)
-        self.doc = f.__doc__
-        self.params = self._get_params(f)
-        self.returns = self._get_returns(f)
-        self.raises = self._get_raises(f)
+class Service:
+
+    @staticmethod
+    def is_service(name):
+        return name.endswith('Service') and name != 'Service'
+
+    def __init__(self, app, cls):
+        self.app = app
+        self.raw_cls = cls
+        self.name = cls.__name__[:-len('Service')]
+        self.doc = cls.__doc__
+        self.__load_fields()
+        self.__load_cls()
+        self.__load_handlers()
 
     def __repr__(self):
-        return f'<MethodInfo {self.service_name}.{self.name}>'
+        handlers = ', '.join(m.name for m in self.handlers)
+        return f'<Service {self.name}: {handlers}>'
 
-    def _get_params(self, f):
+    def __load_fields(self):
+        self.fields = {}
+        for cls in reversed(self.raw_cls.__mro__):
+            for k, v in vars(cls).items():
+                if not isinstance(v, Dependency):
+                    continue
+                if v.key not in self.app.provides:
+                    raise ValueError(f'dependency {v.key!r} not exists')
+                self.fields[k] = v
+
+    def __load_cls(self):
+        base = self.raw_cls
+        cls = type(base.__name__, (base,), self.fields)
+        cls.__module__ = base.__module__
+        cls.__name__ = base.__name__
+        cls.__qualname__ = base.__qualname__
+        cls.__doc__ = base.__doc__
+        self.cls = cls
+
+    def __load_handlers(self):
+        self.handlers = []
+        for name, f in vars(self.raw_cls).items():
+            if not callable(f):
+                continue
+            if self.__is_view(name, f):
+                handler = self.__load_view(name, f)
+            elif self.__is_method(name, f):
+                handler = self.__load_method(name, f)
+            else:
+                continue
+            self.__decorate(handler)
+            self.handlers.append(handler)
+
+    def __is_view(self, name, f):
+        return bool(get_routes(f))
+
+    def __load_view(self, name, f):
+        self.__check_handler_func(name, f)
+        return View(self, name, f)
+
+    def __is_method(self, name, f):
+        return name.startswith('method_') and name != 'method_'
+
+    def __load_method(self, name, f):
+        self.__check_handler_func(name, f)
+        return Method(self, name, f)
+
+    def __check_handler_func(self, name, f):
+        class_name = self.raw_cls.__name__
+        if not inspect.iscoroutinefunction(f):
+            raise TypeError(f'{class_name}.{name} is not coroutine function')
+
+    def __decorate(self, handler):
+        origin = f = handler.f
+        for d in self.app.decorators:
+            f = d(f, handler)
+        f.__name__ = origin.__name__
+        f.__qualname__ = origin.__qualname__
+        f.__module__ = origin.__module__
+        f.__doc__ = origin.__doc__
+        handler.f = f
+
+
+class Handler:
+
+    def __init__(self, service, name, f):
+        self.service = service
+        self.service_class = service.cls
+        self.service_name = service.name
+        self.tags = tagger.get_tags(f)
+        self.doc = f.__doc__
+        self.f = f
+
+    def __repr__(self):
+        return f'<{type(self).__name__} {self.service_name}.{self.name}>'
+
+
+class View(Handler):
+
+    def __init__(self, service, name, f):
+        super().__init__(service, name, f)
+        self.name = name
+        self.routes = get_routes(f)
+        self.raises = self.__get_raises(f)
+
+    def __get_raises(self, f):
+        raises = get_raises(f) or []
+        for error in raises:
+            if not isinstance(error, HttpError):
+                raise TypeError('Can only raises subtypes of HttpError')
+        return raises
+
+    async def __call__(self, context, request):
+        service = self.service_class()
+        service.context = context
+        service.request = request
+        service.response = Response(context)
+        await self.f(service, context, request)
+        return service.response
+
+
+class Method(Handler):
+
+    def __init__(self, service, name, f):
+        super().__init__(service, name, f)
+        self.name = name[len('method_'):]
+        self.schema_compiler = service.app.schema_compiler
+        self.routes = [dict(
+            path=f'/{self.service_name}/{self.name}',
+            methods=['POST'],
+            host=None,
+        )]
+        self.params = self.__get_params(f)
+        self.returns = self.__get_returns(f)
+        self.raises = self.__get_raises(f)
+        self.__params_validator = None
+        if self.params is not None:
+            self.__params_validator = self.__compile_schema(self.params)
+        self.__returns_validator = None
+        if self.returns is not None:
+            self.__returns_validator = self.__compile_schema(self.returns)
+
+    def __get_params(self, f):
         sig = inspect.signature(f)
         params_schema = {}
         for name, p in sig.parameters.items():
@@ -66,116 +231,24 @@ class MethodInfo:
             return T.dict(params_schema).__schema__
         return None
 
-    def _get_returns(self, f):
+    def __get_returns(self, f):
         sig = inspect.signature(f)
         if sig.return_annotation is not inspect.Signature.empty:
             schema = sig.return_annotation
             return T(schema).__schema__
         return None
 
-    def _get_raises(self, f):
+    def __get_raises(self, f):
         raises = get_raises(f) or []
         for error in raises:
             if not isinstance(error, HrpcError):
                 raise TypeError('Can only raises subtypes of HrpcError')
         return raises
 
+    def __compile_schema(self, schema):
+        return self.schema_compiler.compile(schema)
 
-class Service:
-
-    def __init__(self, service_class, provides, decorators, schema_compiler):
-        self.name = service_class.__name__[:-len('Service')]
-        self.doc = service_class.__doc__ or ''
-        self.decorators = decorators
-        self.schema_compiler = schema_compiler
-        methods, fields = self._parse_service(service_class, provides)
-        self._load_fields(fields)
-        self._make_service_class(service_class)
-        self._load_methods(methods)
-
-    def __repr__(self):
-        methods = ','.join(m.name for m in self.methods)
-        return f'<Service {self.name}: {methods}>'
-
-    def _load_fields(self, fields):
-        self.fields = {
-            k: DependencyField(k, v.key)
-            for k, v in fields.items()
-        }
-
-    def _make_service_class(self, base):
-        cls = type(base.__name__, (base,), self.fields)
-        cls.__module__ = base.__module__
-        cls.__name__ = base.__name__
-        cls.__qualname__ = base.__qualname__
-        cls.__doc__ = base.__doc__
-        self.service_class = cls
-
-    def _load_methods(self, methods):
-        self.methods = []
-        for name, f in methods.items():
-            method_info = MethodInfo(self.name, name, f)
-            method_info.f = self._decorate(method_info)
-            m = Method(self, method_info)
-            self.methods.append(m)
-
-    def _parse_service(self, service_class, provides):
-        prefix = 'method_'
-        methods = {}
-        fields = {}
-        for cls in reversed(service_class.__mro__):
-            for k, v in vars(cls).items():
-                if callable(v) and k.startswith(prefix) and k != prefix:
-                    name = k[len(prefix):]
-                    if not inspect.iscoroutinefunction(v):
-                        msg = (f'{self.name}Service.{k} '
-                               f'is not coroutine function')
-                        raise TypeError(msg)
-                    methods[name] = v
-                if isinstance(v, Dependency):
-                    if v.key not in provides:
-                        raise ValueError(f'dependency {v.key!r} not exists')
-                    fields[k] = v
-        return methods, fields
-
-    def _decorate(self, method_info):
-        origin = f = method_info.f
-        for d in self.decorators:
-            f = d(f, method_info)
-        f.__name__ = origin.__name__
-        f.__qualname__ = origin.__qualname__
-        f.__module__ = origin.__module__
-        f.__doc__ = origin.__doc__
-        return f
-
-
-class Method:
-
-    def __init__(self, service, method_info):
-        self.service = service
-        self.service_name = service.name
-        self.service_class = service.service_class
-        self.name = method_info.name
-        self.tags = method_info.tags
-        self.doc = method_info.doc
-        self.params = method_info.params
-        self.returns = method_info.returns
-        self.raises = method_info.raises
-        self._handler = method_info.f
-        self._params_validator = None
-        if self.params is not None:
-            self._params_validator = self._compile_schema(self.params)
-        self._returns_validator = None
-        if self.returns is not None:
-            self._returns_validator = self._compile_schema(self.returns)
-
-    def _compile_schema(self, schema):
-        return self.service.schema_compiler.compile(schema)
-
-    def __repr__(self):
-        return f'<Method {self.service_name}.{self.name}>'
-
-    def _set_error(self, response, ex):
+    def __set_error(self, response, ex):
         response.status = ex.status
         response.headers['Hrpc-Error'] = ex.code
         response.json(dict(message=ex.message, data=ex.data))
@@ -183,39 +256,39 @@ class Method:
     async def __call__(self, context, request):
         service = self.service_class()
         try:
-            return await self._call(service, context, request)
+            return await self.__call(service, context, request)
         except HrpcError as ex:
-            self._set_error(service.response, ex)
+            self.__set_error(service.response, ex)
         except Exception as ex:
             LOG.error('Error raised when handle request:', exc_info=ex)
-            self._set_error(service.response, HrpcServerError())
+            self.__set_error(service.response, HrpcServerError())
         return service.response
 
-    async def _call(self, service, context, request):
+    async def __call(self, service, context, request):
         service.context = context
         service.request = request
         service.response = Response(context)
         # prepare request
-        if self._params_validator is not None:
-            params = await self._parse_request(request)
+        if self.__params_validator is not None:
+            params = await self.__parse_request(request)
             try:
-                params = self._params_validator(params)
+                params = self.__params_validator(params)
             except Invalid as ex:
                 raise HrpcInvalidParams(str(ex)) from None
-            returns = await self._handler(service, **params)
+            returns = await self.f(service, **params)
         else:
-            returns = await self._handler(service)
+            returns = await self.f(service)
         # process response
-        if self._returns_validator is not None:
+        if self.__returns_validator is not None:
             try:
-                returns = self._returns_validator(returns)
+                returns = self.__returns_validator(returns)
             except Invalid as ex:
                 msg = f'Service return a invalid result: {ex}'
                 raise HrpcServerError(msg)
             service.response.json(returns)
         return service.response
 
-    async def _parse_request(self, request):
+    async def __parse_request(self, request):
         try:
             params = await request.json()
         except BadRequest as ex:
