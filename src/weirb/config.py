@@ -32,9 +32,11 @@ INTERNAL_VALIDATORS = dict(
 class InternalConfig:
     """Weirb Internal Config"""
     root_path = T.str.optional
+    server_name = T.str.optional
     print_config = T.bool.default(False)
     print_plugin = T.bool.default(False)
     print_service = T.bool.default(False)
+    print_handler = T.bool.default(False)
 
     debug = T.bool.default(False)
     host = T.str.default('127.0.0.1')
@@ -65,6 +67,7 @@ class InternalConfig:
     logger_datefmt = T.str.default('%Y-%m-%d %H:%M:%S')
 
     def __post_init__(self):
+        self.root_path = self.root_path.rstrip('/') + '/'
         if not self.logger_level:
             self.logger_level = 'DEBUG' if self.debug else 'INFO'
         if self.logger_colored is None:

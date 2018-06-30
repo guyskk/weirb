@@ -1,15 +1,12 @@
 import sys
-import json
 import code
 import atexit
 import os.path
-from newio_kernel import run
-from weirb import RawRequest
-from weirb.error import HttpError
 
-from .shell_doc import format_service_doc, format_handler_doc
+from .client import Client
+from .helper import HTTP_METHODS
 
-HISTORY_PATH = os.path.expanduser('~/.weirb-hrpc-history')
+HISTORY_PATH = os.path.expanduser('~/.weirb-history')
 
 
 def _save_history():
@@ -34,176 +31,42 @@ def _enable_completer(context):
     atexit.register(_save_history)
 
 
-def _format_headers(headers):
-    headers = [f'{k}: {v}' for k, v in headers.items()]
-    return'\n'.join(headers)
+class Shell:
 
-
-class ApiError(Exception):
-    """Api Error"""
-
-    def __init__(self, message, headers=None, data=None):
-        self.message = message
-        self.headers = headers or {}
-        self.error = headers.pop('error', None) or 'Hrpc.HttpError'
-        self.data = data
-        super().__init__(repr(self))
-
-    def __repr__(self):
-        headers = _format_headers(self.headers)
-        if self.error == self.message:
-            msg = self.error
-        else:
-            msg = f'{self.error}: {self.message}'
-        if headers:
-            return f'\n{headers}\n    {msg}\n'
-        else:
-            return f'\n    {msg}\n'
-
-
-class ApiResult:
-    def __init__(self, result, headers):
-        self.result = result
-        self.headers = headers
-
-    def __repr__(self):
-        headers = _format_headers(self.headers)
-        text = json.dumps(self.result, ensure_ascii=False, indent=4).strip()
-        if headers:
-            return f'\n{headers}\n{text}\n'
-        else:
-            return f'\n{text}\n'
-
-
-class Headers(dict):
-
-    def __getitem__(self, k):
-        return super().__getitem__(k.lower())
-
-    def __setitem__(self, k, v):
-        super().__setitem__(k.lower(), v)
-
-    def __delitem__(self, k):
-        super().__delitem__(k.lower())
-
-    def __repr__(self):
-        if not self:
-            return '\n    No Headers\n'
-        headers = [f'    {k}: {v}' for k, v in self.items()]
-        headers = '\n'.join(headers)
-        return f'\n{headers}\n'
-
-
-class Service:
-    def __init__(self, shell, service):
-        self._shell = shell
-        self._doc = format_service_doc(service)
-        methods = {m.name: Method(shell, m)for m in service.methods}
-        self.__dict__.update(methods)
-
-    def __repr__(self):
-        return '-' * 60 + '\n' + self._doc
-
-
-class Method:
-    def __init__(self, shell, method):
-        self._shell = shell
-        self._doc = format_handler_doc(method)
-        self._service = method.service_name
-        self._method = method.name
-
-    def __call__(self, **params):
-        try:
-            return self._shell.call(self._service, self._method, params)
-        except ApiError as ex:
-            return ex
-
-    def __repr__(self):
-        return '-' * 60 + '\n' + self._doc
-
-
-class HrpcShell:
     def __init__(self, app):
         self.app = app
-        self.root_path = app.config.root_path
-        self.headers = Headers()
-        self.services = {s.name: Service(self, s) for s in app.services}
+        self._client = Client(app)
 
-    def _get_endpoint(self, service, method):
-        return f'{self.root_path}/{service}/{method}'
+    @property
+    def headers(self):
+        return self._client.headers
 
-    async def _read_response(self, response):
-        content = []
-        async for chunk in response.body:
-            content.append(chunk)
-        content = b''.join(content)
-        text = content.decode('utf-8')
-        result = json.loads(text)
-        headers = {}
-        for k, v in response.headers.items():
-            k = k.lower()
-            if k.startswith('hrpc-'):
-                headers[k[5:]] = v
-        if 'error' in headers:
-            raise ApiError(headers=headers, **result)
-        return ApiResult(result, headers)
-
-    async def _request_body(self, params):
-        text = json.dumps(params, ensure_ascii=False, indent=4)
-        yield text.encode('utf-8')
-
-    async def _call(self, service, method, headers, params):
-        path = self._get_endpoint(service, method)
-        headers = [(f'Hrpc-{k}', v) for k, v in headers.items()]
-        headers.append(('Content-Type', 'application/json;charset=utf-8'))
-        raw_request = RawRequest(
-            method='POST',
-            url=path,
-            version='HTTP/1.1',
-            headers=headers,
-            body=self._request_body(params),
-            protocol='http',
-            remote_ip='127.0.0.1',
-            keep_alive=True,
-        )
-        async with self.app.context() as ctx:
-            try:
-                response = await ctx(raw_request)
-            except HttpError as ex:
-                raise ApiError(str(ex))
-            return await self._read_response(response)
-
-    def call(self, service, method, params):
-        return run(self._call(service, method, self.headers, params))
+    @headers.setter
+    def headers(self, value):
+        self._client.headers = value
 
     def _context_locals(self):
-        return {
+        ctx = {
             'app': self.app,
             'config': self.app.config,
             'headers': self.headers,
+            'call': self._client.call,
         }
+        for method in HTTP_METHODS:
+            ctx[method.lower()] = getattr(self._client, method.lower())
+        return ctx
 
     def _format_banner(self):
         python_version = '{}.{}.{}'.format(*sys.version_info)
         banner = [
-            f'Python {python_version} Hrpc Shell\n\n',
+            f'Python {python_version} Weirb Shell\n\n',
             'Locals: ' + ', '.join(self._context_locals()) + '\n',
         ]
-        if self.app.services:
-            services = ['\nServices:\n']
-        else:
-            services = ['\nServices: No Services\n']
-        for s in self.app.services:
-            methods = ', '.join([m.name for m in s.methods])
-            services.append(f'    {s.name}: {methods}\n')
-        services = ''.join(services)
-        banner.append(services)
         return ''.join(banner)
 
     def start(self):
         context = self._context_locals()
-        context.update(self.services)
         banner = self._format_banner()
         _enable_completer(context)
-        sys.ps1 = 'Hrpc> '
+        sys.ps1 = 'Weirb> '
         code.interact(banner=banner, local=context, exitmsg='')

@@ -2,7 +2,7 @@ import inspect
 import logging
 from functools import partial
 
-from validr import T, Invalid
+from validr import T, Invalid, modelclass
 
 from .response import Response
 from .helper import HTTP_METHODS
@@ -19,13 +19,15 @@ from .error import (
 LOG = logging.getLogger(__name__)
 
 
-def route(path, *, methods, host=None):
+@modelclass
+class Route:
+    path = T.str
+    methods = T.list(T.str)
+
+
+def route(path, *, methods):
     methods = _normalize_methods(methods)
-    return tagger.stackable_tag('routes', dict(
-        path=path,
-        methods=methods,
-        host=host,
-    ))
+    return tagger.stackable_tag('routes', Route(path, methods))
 
 
 def _normalize_methods(methods):
@@ -107,7 +109,7 @@ class Service:
                     continue
                 if v.key not in self.app.provides:
                     raise ValueError(f'dependency {v.key!r} not exists')
-                self.fields[k] = v
+                self.fields[k] = DependencyField(k, v.key)
 
     def __load_cls(self):
         base = self.raw_cls
@@ -168,6 +170,7 @@ class Handler:
         self.service = service
         self.service_class = service.cls
         self.service_name = service.name
+        self.root_path = self.service.app.config.root_path
         self.tags = tagger.get_tags(f)
         self.doc = f.__doc__
         self.f = f
@@ -175,13 +178,19 @@ class Handler:
     def __repr__(self):
         return f'<{type(self).__name__} {self.service_name}.{self.name}>'
 
+    def fill_path(self, path):
+        return self.root_path + path.lstrip('/')
+
 
 class View(Handler):
 
     def __init__(self, service, name, f):
         super().__init__(service, name, f)
         self.name = name
-        self.routes = get_routes(f)
+        self.routes = []
+        for route in get_routes(f):
+            path = self.fill_path(route.path)
+            self.routes.append(Route(path, route.methods))
         self.raises = self.__get_raises(f)
 
     def __get_raises(self, f):
@@ -196,7 +205,7 @@ class View(Handler):
         service.context = context
         service.request = request
         service.response = Response(context)
-        await self.f(service, context, request)
+        await self.f(service, **request.path_params)
         return service.response
 
 
@@ -206,10 +215,9 @@ class Method(Handler):
         super().__init__(service, name, f)
         self.name = name[len('method_'):]
         self.schema_compiler = service.app.schema_compiler
-        self.routes = [dict(
-            path=f'/{self.service_name}/{self.name}',
+        self.routes = [Route(
+            path=self.fill_path(f'{self.service_name}/{self.name}'),
             methods=['POST'],
-            host=None,
         )]
         self.params = self.__get_params(f)
         self.returns = self.__get_returns(f)

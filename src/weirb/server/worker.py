@@ -1,9 +1,8 @@
 import logging
 from newio import spawn
 
-from ..error import HttpError, InternalServerError
-from ..helper import stream
-from .response import AbstractResponse
+from ..error import InternalServerError, HttpError
+from .response import ErrorResponse
 
 LOG = logging.getLogger(__name__)
 
@@ -25,22 +24,6 @@ def _format_headers(response):
 def _format_chunk(chunk: bytes):
     length = hex(len(chunk))[2:].encode()
     return length + b'\r\n' + chunk + b'\r\n'
-
-
-class ErrorResponse(AbstractResponse):
-    def __init__(self, error: HttpError):
-        self._error = error
-        self._body = str(error).encode('utf-8')
-        self.status = error.status
-        self.status_text = error.phrase
-        self.version = 'HTTP/1.1'
-        self.headers = [('Content-Length', len(self._body))]
-        self.body = stream(self._body)
-        self.chunked = False
-        self.keep_alive = None
-
-    def __repr__(self):
-        return f'<{type(self).__name__} {self.status}:{self._error.message}>'
 
 
 class Worker:

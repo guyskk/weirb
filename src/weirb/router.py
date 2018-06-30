@@ -14,32 +14,29 @@ LOG = logging.getLogger(__name__)
 
 
 class Router:
-    def __init__(self, services, root_path=''):
+    def __init__(self, services, server_name):
         self.services = services
-        print(services)
-        self.root_path = root_path.rstrip('/') + '/'
+        self.server_name = server_name
         url_map = []
         for service in services:
             for handler in service.handlers:
                 for route in handler.routes:
-                    path = self.root_path + route['path'].strip('/')
                     url_map.append(Rule(
-                        path,
+                        route.path,
+                        methods=route.methods,
                         endpoint=handler,
-                        host=route['host'],
-                        methods=route['methods'],
                     ))
         self.url_map = Map(url_map)
 
     @functools.lru_cache(maxsize=1024)
-    def lookup(self, host, path, method):
-        url = self.url_map.bind(server_name=host)
+    def lookup(self, path, method):
+        url = self.url_map.bind(server_name=self.server_name)
         try:
             handler, arguments = url.match(path_info=path, method=method)
         except WZ_NotFound as ex:
-            raise NotFound(str(ex)) from None
+            raise NotFound() from None
         except WZ_MethodNotAllowed as ex:
-            raise MethodNotAllowed(str(ex)) from None
+            raise MethodNotAllowed() from None
         except WZ_RequestRedirect as ex:
             raise HttpRedirect(ex.new_url, status=ex.code)
         return handler, arguments

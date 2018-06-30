@@ -12,6 +12,10 @@ async def stream(data):
     yield data
 
 
+def shorten_text(x, w=30):
+    return (x[:w] + '...') if len(x) > w else x
+
+
 def find_version():
     try:
         from pkg_resources import get_distribution, DistributionNotFound

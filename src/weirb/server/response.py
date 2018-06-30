@@ -1,6 +1,9 @@
 from typing import List, Tuple, AsyncIterable, Any
 from zope.interface import Interface, Attribute, implementer
 
+from ..error import HttpError
+from ..helper import stream
+
 
 class IResponse(Interface):
     status: int = Attribute('Status code')
@@ -15,3 +18,19 @@ class IResponse(Interface):
 @implementer(IResponse)
 class AbstractResponse:
     """Abstract Response"""
+
+
+class ErrorResponse(AbstractResponse):
+    def __init__(self, error: HttpError):
+        self._error = error
+        self._body = str(error).encode('utf-8')
+        self.status = error.status
+        self.status_text = error.phrase
+        self.version = 'HTTP/1.1'
+        self.headers = [('Content-Length', len(self._body))]
+        self.body = stream(self._body)
+        self.chunked = False
+        self.keep_alive = None
+
+    def __repr__(self):
+        return f'<{type(self).__name__} {self.status} {self.status_text}>'

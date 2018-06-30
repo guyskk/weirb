@@ -12,7 +12,7 @@ from . import __version__
 from . import App
 from .error import ConfigError, AppNotFound
 from .helper import get_current_app_name
-from .shell import HrpcShell
+from .shell import Shell
 from .generator import HrpcGenerator
 
 PROJECT_TEMPLATE = Path(__file__).parent / 'project-template'
@@ -153,7 +153,7 @@ def serve(ctx, name=None):
 def shell(ctx, name=None):
     """Start app shell, use `--<key>=<value>` to set config"""
     app = _create_app(ctx, name)
-    HrpcShell(app).start()
+    Shell(app).start()
 
 
 @cli.command()

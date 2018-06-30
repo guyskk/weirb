@@ -12,9 +12,9 @@ from .request import Request
 from .response import Response
 from .error import ConfigError, DependencyError, HttpRedirect
 from .context import Context
-from .helper import import_all_modules
+from .helper import import_all_modules, shorten_text
 from .config import InternalConfig, INTERNAL_VALIDATORS
-from .service import Service
+from .service import Service, Method
 from .router import Router
 
 LOG = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class App:
         self._config_dict = asdict(self.config)
         self._active_plugins()
         self._load_services()
-        self.router = Router(self.services, self.config.root_path)
+        self.router = Router(self.services, self.config.server_name)
 
     def __repr__(self):
         return f'<App {self.import_name}>'
@@ -148,7 +148,9 @@ class App:
     async def _handler(self, context, raw_request):
         request = Request(context, raw_request)
         try:
-            handler = self.router.lookup(request.path)
+            handler, path_params = self.router.lookup(
+                request.host, request.path, request.method)
+            request.path_params = path_params
         except HttpRedirect as redirect:
             response = Response(context)
             response.redirect(redirect.location, redirect.status)
@@ -162,6 +164,8 @@ class App:
             self.print_plugin()
         if self.config.print_service:
             self.print_service()
+        if self.config.print_handler:
+            self.print_handler()
         serve(self, self.config)
 
     def print_config(self):
@@ -170,13 +174,13 @@ class App:
         for key, value in sorted(asdict(self.config).items()):
             schema = config_schema[key]
             table.append(
-                (key, _shorten(str(value)), _shorten(schema.repr()))
+                (key, shorten_text(str(value)), shorten_text(schema.repr()))
             )
         table = SingleTable(table, title='Configs')
         print(table.table)
 
     def print_plugin(self):
-        title = 'Plugins' if self.plugins else 'No plugins'
+        title = 'Plugins' if self.plugins else 'No Plugins'
         table = [('#', 'Name', 'Provides', 'Requires', 'Contributes')]
         for idx, plugin in enumerate(self.plugins, 1):
             name = type(plugin).__name__
@@ -197,7 +201,7 @@ class App:
         print(table.table)
 
     def print_service(self):
-        title = 'Services' if self.services else 'No services'
+        title = 'Services' if self.services else 'No Services'
         table = [('#', 'Name', 'Handlers', 'Requires')]
         for idx, service in enumerate(self.services, 1):
             handlers = [m.name for m in service.handlers]
@@ -208,6 +212,23 @@ class App:
         table = SingleTable(table, title=title)
         print(table.table)
 
-
-def _shorten(x, w=30):
-    return (x[:w] + '...') if len(x) > w else x
+    def print_handler(self):
+        title = 'Handlers' if self.services else 'No Handlers'
+        table = [
+            ['Service', 'Handler', 'Methods', 'Path'],
+        ]
+        for service in self.services:
+            for handler in service.handlers:
+                for route in handler.routes:
+                    if isinstance(handler, Method):
+                        methods = '*POST'
+                    else:
+                        methods = ' '.join(route.methods)
+                    table.append((
+                        service.name,
+                        handler.name,
+                        methods,
+                        route.path,
+                    ))
+        table = SingleTable(table, title=title)
+        print(table.table)

@@ -234,6 +234,7 @@ class Request(RequestUrlMixin, RequestHeadersMixin, RequestBodyMixin):
         super().__init__()
         self.context = context
         self.raw = raw
+        self.path_params = {}
         self._xheaders = context.config.xheaders
         self._body_readed = False
 
