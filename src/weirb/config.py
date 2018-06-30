@@ -1,5 +1,5 @@
 from validr import T, Invalid, validator
-
+from newio_kernel.kernel import MONITOR_DEFAULT_HOST, MONITOR_DEFAULT_PORT
 
 _LOG_LEVELS = {
     'DEBUG',
@@ -60,11 +60,15 @@ class InternalConfig:
     reloader_extra_files = T.str.optional
 
     logger_level = T.loglevel.optional
-    logger_colored = T.bool.optional,
+    logger_colored = T.bool.optional
     logger_format = T.str.default(
-        '%(asctime)s [%(process)s] %(levelname)-5s '
+        '%(levelname)1.1s %(asctime)s P%(process)5s '
         '%(name)s:%(lineno)-4d %(message)s')
     logger_datefmt = T.str.default('%Y-%m-%d %H:%M:%S')
+
+    newio_monitor_enable = T.bool.optional
+    newio_monitor_host = T.str.default(MONITOR_DEFAULT_HOST)
+    newio_monitor_port = T.int.default(MONITOR_DEFAULT_PORT)
 
     def __post_init__(self):
         self.root_path = self.root_path.rstrip('/') + '/'
@@ -74,6 +78,8 @@ class InternalConfig:
             self.logger_colored = self.debug
         if self.reloader_enable is None:
             self.reloader_enable = self.debug
+        if self.newio_monitor_enable is None:
+            self.newio_monitor_enable = self.debug
         if self.response_json_pretty is None:
             self.response_json_pretty = self.debug
         if self.response_json_sort_keys is None:

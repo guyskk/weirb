@@ -178,8 +178,8 @@ class Handler:
     def __repr__(self):
         return f'<{type(self).__name__} {self.service_name}.{self.name}>'
 
-    def fill_path(self, path):
-        return self.root_path + path.lstrip('/')
+    def fix_path(self, path):
+        return (self.root_path + path.lstrip('/')).lower()
 
 
 class View(Handler):
@@ -189,7 +189,7 @@ class View(Handler):
         self.name = name
         self.routes = []
         for route in get_routes(f):
-            path = self.fill_path(route.path)
+            path = self.fix_path(route.path)
             self.routes.append(Route(path, route.methods))
         self.raises = self.__get_raises(f)
 
@@ -216,7 +216,7 @@ class Method(Handler):
         self.name = name[len('method_'):]
         self.schema_compiler = service.app.schema_compiler
         self.routes = [Route(
-            path=self.fill_path(f'{self.service_name}/{self.name}'),
+            path=self.fix_path(f'{self.service_name}/{self.name}'),
             methods=['POST'],
         )]
         self.params = self.__get_params(f)

@@ -8,6 +8,7 @@ from terminaltables import SingleTable
 from validr import modelclass, Invalid, Compiler, fields, asdict
 
 from .server import serve
+from .logger import config_logging
 from .request import Request
 from .response import Response
 from .error import ConfigError, DependencyError, HttpRedirect
@@ -29,6 +30,7 @@ class App:
         self._load_schema_compiler()
         self._load_config_class()
         self._load_config(cli_config)
+        config_logging(self.config)
         self._config_dict = asdict(self.config)
         self._active_plugins()
         self._load_services()
@@ -85,7 +87,7 @@ class App:
         key = f'{name}_config'.upper()
         config_path = os.getenv(key, None)
         if config_path:
-            print(f'* Load config file {config_path!r}')
+            print(f'[INFO] Load config file {config_path!r}')
             try:
                 with open(config_path) as f:
                     content = f.read()
@@ -99,8 +101,8 @@ class App:
                 raise ConfigError(msg) from None
             config.update(cli_config)
         else:
-            print(f'* No config file provided, you can set config path'
-                  f' by {key} environment variable')
+            print(f'[INFO] No config file provided '
+                  f'by {key} environment variable')
             config = cli_config
         try:
             self.config = self.config_class(**config)
@@ -149,7 +151,7 @@ class App:
         request = Request(context, raw_request)
         try:
             handler, path_params = self.router.lookup(
-                request.host, request.path, request.method)
+                request.path, request.method)
             request.path_params = path_params
         except HttpRedirect as redirect:
             response = Response(context)

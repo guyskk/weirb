@@ -15,9 +15,8 @@ import time
 from multiprocessing import Process
 
 from newio import socket, spawn
-from newio_kernel import run as run_task
+from newio_kernel import Runner
 from gunicorn.reloader import Reloader
-import coloredlogs
 
 from .parser import RequestParser
 from .worker import Worker
@@ -30,7 +29,34 @@ LOG = logging.getLogger(__name__)
 
 def serve(app, config):
     server = Server(app, config)
-    server.run()
+    server.start()
+
+
+GREEN = 2
+BLUE = 75
+PURPLE = 140
+RED = 9
+
+DEFAULT_FIELD_STYLES = {
+    'asctime': {'color': GREEN},
+    'hostname': {'color': PURPLE},
+    'levelname': {'color': 'black', 'bold': True},
+    'name': {'color': BLUE},
+    'process': {'color': PURPLE},
+    'programname': {'color': BLUE}
+}
+
+DEFAULT_LEVEL_STYLES = {
+    'spam': {'color': GREEN, 'faint': True},
+    'success': {'color': GREEN, 'bold': True},
+    'verbose': {'color': GREEN},
+    'debug': {'color': GREEN},
+    'info': {},
+    'notice': {},
+    'error': {'color': RED},
+    'critical': {'color': RED},
+    'warning': {'color': 'yellow'}
+}
 
 
 class Server:
@@ -40,7 +66,11 @@ class Server:
         self.config = config
         self.debug = config.debug
         self.num_process = config.num_process
-        self._init_loging()
+        self._runner = Runner(
+            monitor_enable=self.config.newio_monitor_enable,
+            monitor_host=self.config.newio_monitor_host,
+            monitor_port=self.config.newio_monitor_port,
+        )
         self._init_serv_sock()
         self._init_processes()
         self._reloading = False
@@ -57,12 +87,6 @@ class Server:
             body_buffer_size=self.config.request_body_buffer_size,
         )
         return parser.parse()
-
-    def _init_loging(self):
-        level = self.config.logger_level
-        fmt = self.config.logger_format
-        datefmt = self.config.logger_datefmt
-        coloredlogs.install(level=level, fmt=fmt, datefmt=datefmt)
 
     def _init_serv_sock(self):
         host = self.config.host
@@ -97,7 +121,7 @@ class Server:
         pid = os.getpid()
         LOG.info(f'Process#{i} pid={pid} started')
         try:
-            run_task(self._serve_forever())
+            self._runner(self._serve_forever())
         except KeyboardInterrupt:
             pass
         except Exception as ex:
@@ -125,7 +149,7 @@ class Server:
                 p.terminate()
             p.join()
 
-    def run(self):
+    def start(self):
         LOG.info(f'Starting {self.num_process} processes')
         for p in self._processes:
             p.start()
