@@ -1,14 +1,14 @@
 import inspect
 import logging
+import itertools
 from functools import partial
 
-from validr import T, Invalid, modelclass
+from validr import T, Invalid
 
 from .response import Response
 from .helper import HTTP_METHODS
 from .tagger import tagger
 from .error import (
-    HttpError,
     HrpcError,
     HrpcServerError,
     HrpcInvalidParams,
@@ -19,10 +19,10 @@ from .error import (
 LOG = logging.getLogger(__name__)
 
 
-@modelclass
 class Route:
-    path = T.str
-    methods = T.list(T.str)
+    def __init__(self, path, methods):
+        self.path = path
+        self.methods = methods
 
 
 def route(path, *, methods):
@@ -50,8 +50,11 @@ del _build_route
 get_routes = tagger.get('routes')
 
 
-def raises(error):
-    return tagger.stackable_tag('raises', error)
+def raises(*errors):
+    for e in errors:
+        if not issubclass(e, HrpcError):
+            raise TypeError('Can only raises subtypes of HrpcError')
+    return tagger.stackable_tag('raises', errors)
 
 
 get_raises = tagger.get('raises', default=None)
@@ -186,19 +189,12 @@ class View(Handler):
 
     def __init__(self, service, name, f):
         super().__init__(service, name, f)
+        self.is_method = False
         self.name = name
         self.routes = []
         for route in get_routes(f):
             path = self.fix_path(route.path)
             self.routes.append(Route(path, route.methods))
-        self.raises = self.__get_raises(f)
-
-    def __get_raises(self, f):
-        raises = get_raises(f) or []
-        for error in raises:
-            if not isinstance(error, HttpError):
-                raise TypeError('Can only raises subtypes of HttpError')
-        return raises
 
     async def __call__(self, context, request):
         service = self.service_class()
@@ -213,6 +209,7 @@ class Method(Handler):
 
     def __init__(self, service, name, f):
         super().__init__(service, name, f)
+        self.is_method = True
         self.name = name[len('method_'):]
         self.schema_compiler = service.app.schema_compiler
         self.routes = [Route(
@@ -248,9 +245,7 @@ class Method(Handler):
 
     def __get_raises(self, f):
         raises = get_raises(f) or []
-        for error in raises:
-            if not isinstance(error, HrpcError):
-                raise TypeError('Can only raises subtypes of HrpcError')
+        raises = set(itertools.chain.from_iterable(raises))
         return raises
 
     def __compile_schema(self, schema):

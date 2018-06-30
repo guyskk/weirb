@@ -10,40 +10,63 @@ date: ${date}
 
 ${doc or 'No Doc'}
 
-%for method in methods:
+%for handler in handlers:
 
-${'##'} **${method['name']}** ${'##'}
+${'##'} \
+% if handler['is_method']:
+Method: \
+% else:
+View: \
+% endif
+**${handler['name']}** ${'##'}
 
-${method['doc'] or 'No Doc'}
+${handler['doc'] or 'No Doc'}
 
-Params:
+**Routes**:
+
+Path         | Methods
+------------ | ----------------
+% for route in handler['routes']:
+${route['path']} | ${route['methods']}
+% endfor
+
+% if handler['is_method']:
+**Params**:
 ```
-    %if method['params'] is None:
-No Params
+    %if handler['params'] is None:
+**No Params**
     %else:
-${method['params']}
+${handler['params']}
     %endif
 ```
 
-Returns:
+**Returns**:
 ```
-    %if method['params'] is None:
-No Returns
+    %if handler['params'] is None:
+**No Returns**
     %else:
-${method['returns']}
+${handler['returns']}
     %endif
 ```
 
-    %if not method['raises']:
-No Raises
+    %if not handler['raises']:
+**No Raises**
     %else:
-Raises:
-        %for error in method['raises']:
-            %if error['doc']:
-    - ${error['code']}: ${error['doc']}
-            %else:
-    - ${error['code']}}
-            %endif
-        %endfor
+**Raises**:
+
+Status Code  | Error Code        | Description
+------------ | ----------------- | -------------
+%for error in handler['raises']:
+${error['status']}  | ${error['code']}  | ${error['doc'] or 'No Doc'}
+%endfor
+
+##         %for error in handler['raises']:
+##             %if error['doc']:
+## - ${error['status']} ${error['code']}: ${error['doc']}
+##             %else:
+## - ${error['status']} ${error['code']}}
+##             %endif
+##         %endfor
     %endif
+% endif
 %endfor

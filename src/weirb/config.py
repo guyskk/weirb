@@ -62,7 +62,7 @@ class InternalConfig:
     logger_level = T.loglevel.optional
     logger_colored = T.bool.optional
     logger_format = T.str.default(
-        '%(levelname)1.1s %(asctime)s P%(process)5s '
+        '%(levelname)1.1s %(asctime)s P%(process)-5s '
         '%(name)s:%(lineno)-4d %(message)s')
     logger_datefmt = T.str.default('%Y-%m-%d %H:%M:%S')
 

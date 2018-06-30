@@ -152,12 +152,11 @@ class Client:
 
     def __init__(self, app, headers=None):
         self.app = app
-        self.root_path = app.config.root_path
         self.headers = ClientHeaders(headers or {})
 
     async def __request(
             self, path, *, method, query=None, body=None, headers=None):
-        path = self.root_path + path.lstrip('/')
+        path = '/' + path.lstrip('/')
         request_headers = self.headers.copy()
         if headers:
             for k, v in Headers(headers).items():

@@ -142,7 +142,8 @@ class App:
                 if not Service.is_service(name):
                     continue
                 visited.add(obj)
-                self.services.append(Service(self, obj))
+                service = Service(self, obj)
+                self.services.append(service)
 
     def context(self):
         return Context(self)

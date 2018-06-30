@@ -52,11 +52,8 @@ def version():
 @cli.command()
 @click.option('--name', prompt='Project Name',
               help='Project name')
-@click.option('-s', '--simple', default=False, is_flag=True,
-              prompt='Use simple layout?',
-              help='Use simple or standard layout')
 @click.pass_context
-def new(ctx, name, simple=False):
+def new(ctx, name):
     """Create new project"""
     try:
         os.makedirs(name)
@@ -65,16 +62,10 @@ def new(ctx, name, simple=False):
     path = Path(os.path.abspath(name))
     click.echo(f'directory {str(path)!r} created')
     module_name = name.replace('-', '_')
-    if simple:
-        src = PROJECT_TEMPLATE / 'hello.py'
-        dst = path / f'{module_name}.py'
-        shutil.copy(src, dst)
-        click.echo('simple layout created')
-    else:
-        src = PROJECT_TEMPLATE / 'echo'
-        dst = path / module_name
-        shutil.copytree(src, dst)
-        click.echo('standard layout created')
+    src = PROJECT_TEMPLATE / 'echo'
+    dst = path / module_name
+    shutil.copytree(src, dst)
+    click.echo('standard layout created')
     docs_path = path / 'docs'
     shutil.copytree(DOCS_TEMPLATE, docs_path)
     click.echo(f'directory {str(docs_path)!r} created')
@@ -158,24 +149,19 @@ def shell(ctx, name=None):
 
 @cli.command()
 @option_app_name()
+@click.option('--preview', '-p', is_flag=True, help='preview docs')
 @click.pass_context
-def gen(ctx, name=None):
-    """Generate docs and meta data"""
+def doc(ctx, name=None, preview=False):
+    """Generate and preview docs"""
     app = _create_app(ctx, name)
     generator = HrpcGenerator(app)
-    generator.gen_meta()
-    generator.gen_docs()
-
-
-@cli.command()
-@click.pass_context
-def doc(ctx):
-    """Preview docs"""
+    generator.gen()
     os.chdir('docs')
     exit_code = os.system('simiki g')
     if exit_code != 0:
         return
-    os.system('simiki p')
+    if preview:
+        os.system('simiki p')
 
 
 if __name__ == '__main__':

@@ -14,6 +14,10 @@ ${'##'} Services ${'##'}
 - [${service['name']}](/services/${service['name']}.html)
 %endfor
 
-${'##'} Errors ${'##'}
+${'##'} Built-in HRPC Errors ${'##'}
 
-- [Errors](/errors/errors.html)
+Status Code  | Error Code        | Description
+------------ | ----------------- | -------------
+%for error in builtin_errors:
+${error['status']}  | ${error['code']}  | ${error['doc'] or 'No Doc'}
+%endfor

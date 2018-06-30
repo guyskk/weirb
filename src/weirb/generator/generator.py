@@ -9,10 +9,26 @@ _here = Path(__file__).parent
 
 INTRO_MD = _here / 'intro.md.mako'
 SERVICE_MD = _here / 'service.md.mako'
-ERRORS_MD = _here / 'errors.md.mako'
 
 CONTENT_DIR = Path('docs') / 'content'
 
+
+# class ServiceSchema:
+#     name = T.str
+#     doc = T.str.optional
+#     handlers = T.list(HandlerSchema)
+
+# class HandlerSchema:
+#     is_method = T.bool
+#     name = T.str
+#     doc = T.str.optional
+#     routes = T.list(T.dict(
+#         path=T.str,
+#         methods=T.list(T.str),
+#     ))
+#     raises = T.list(T.dict(
+
+#     ))
 
 class HrpcGenerator:
 
@@ -27,31 +43,42 @@ class HrpcGenerator:
                 f'No Doc\n\n'
             )
         self.date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.builtin_errors = self._format_errors(BUILTIN_HRPC_ERRORS)
         self.services = []
-        builtin_errors = set(BUILTIN_HRPC_ERRORS)
-        service_errors = set()
         for s in self.app.services:
-            methods = []
-            for m in s.methods:
-                service_errors.update(m.raises)
-                methods.append({
-                    'name': m.name,
-                    'doc': m.doc,
-                    'params': None if m.params is None else str(m.params),
-                    'returns': None if m.returns is None else str(m.returns),
-                    'raises': self._format_errors(m.raises),
-                })
+            handlers = []
+            for h in s.handlers:
+                routes = []
+                for r in h.routes:
+                    methods = ' '.join(r.methods)
+                    routes.append(dict(path=r.path, methods=methods))
+                handler = {
+                    'is_method': h.is_method,
+                    'name': h.name,
+                    'doc': h.doc,
+                    'routes': routes,
+                }
+                if h.is_method:
+                    params = None if h.params is None else str(h.params)
+                    returns = None if h.returns is None else str(h.returns)
+                    handler.update(dict(
+                        raises=self._format_errors(h.raises),
+                        params=params,
+                        returns=returns,
+                    ))
+                handlers.append(handler)
             self.services.append({
                 'name': s.name,
                 'doc': s.doc,
-                'methods': methods,
+                'handlers': handlers,
             })
-        service_errors -= builtin_errors
-        self.builtin_errors = self._format_errors(builtin_errors)
-        self.service_errors = self._format_errors(service_errors)
 
     def _format_errors(self, errors):
-        return [{'code': e.code, 'doc': e.__doc__ or ''} for e in errors]
+        return [{
+            'status': e.status,
+            'code': e.code,
+            'doc': e.__doc__ or ''
+        } for e in errors]
 
     def _get_meta(self):
         meta = {
@@ -60,7 +87,6 @@ class HrpcGenerator:
             'date': self.date,
             'services': self.services,
             'builtin_errors': self.builtin_errors,
-            'service_errors': self.service_errors,
         }
         return meta
 
@@ -71,13 +97,11 @@ class HrpcGenerator:
         with open(path, 'w') as f:
             f.write(text)
 
-    def gen_meta(self):
+    def gen(self):
         meta = self._get_meta()
+        # meta
         text = json.dumps(meta, ensure_ascii=False, indent=4)
         self._write(CONTENT_DIR / 'meta.json', text)
-
-    def gen_docs(self):
-        meta = self._get_meta()
         # intro
         intro_tmpl = Template(filename=str(INTRO_MD))
         text = intro_tmpl.render(**meta)
@@ -88,7 +112,3 @@ class HrpcGenerator:
             name = service['name']
             text = service_tmpl.render(date=self.date, **service)
             self._write(CONTENT_DIR / 'services' / f'{name}.md', text)
-        # errors
-        errors_tmpl = Template(filename=str(ERRORS_MD))
-        text = errors_tmpl.render(**meta)
-        self._write(CONTENT_DIR / 'errors' / 'errors.md', text)
