@@ -61,6 +61,10 @@ class ClientResponse:
         self.__repr_text = self.__repr()
 
     @cached_property
+    def error(self):
+        return self.headers.get('Hrpc-Error', None)
+
+    @cached_property
     def content_type(self):
         return self.headers.get('Content-Type', '')
 
