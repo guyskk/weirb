@@ -5,7 +5,8 @@ python:
   - "nightly"
 
 matrix:
-  - python: "nightly"
+  allow_failures:
+    - python: "nightly"
 
 install:
   - ./bootstrap.sh
