@@ -1,6 +1,8 @@
 from validr import T, Invalid, validator
 from newio_kernel.kernel import MONITOR_DEFAULT_HOST, MONITOR_DEFAULT_PORT
 
+from .error import ConfigError
+
 _LOG_LEVELS = {
     'DEBUG',
     'INFO',
@@ -31,16 +33,16 @@ INTERNAL_VALIDATORS = dict(
 
 class InternalConfig:
     """Weirb Internal Config"""
-    root_path = T.str.optional
-    server_name = T.str.optional
     print_config = T.bool.default(False)
-    print_plugin = T.bool.default(False)
-    print_service = T.bool.default(False)
-    print_handler = T.bool.default(False)
+    print_plugins = T.bool.default(False)
+    print_services = T.bool.default(False)
+    print_handlers = T.bool.default(False)
 
     debug = T.bool.default(False)
     host = T.str.default('127.0.0.1')
     port = T.int.min(0).default(8080)
+    root_path = T.str.optional
+    server_name = T.str.optional
     backlog = T.int.min(1).default(1024)
     num_process = T.int.min(1).default(1)
     xheaders = T.bool.default(False)
@@ -53,8 +55,9 @@ class InternalConfig:
     request_header_buffer_size = T.int.min(1).default(1024)
     request_body_buffer_size = T.int.min(1).default(16 * 1024)
 
-    response_json_pretty = T.bool.optional
-    response_json_sort_keys = T.bool.default(False)
+    json_pretty = T.bool.optional
+    json_sort_keys = T.bool.default(False)
+    json_ujson_enable = T.bool.default(False)
 
     reloader_enable = T.bool.optional
     reloader_extra_files = T.str.optional
@@ -72,6 +75,7 @@ class InternalConfig:
 
     def __post_init__(self):
         self.root_path = self.root_path.rstrip('/') + '/'
+        # set default config on debug
         if not self.logger_level:
             self.logger_level = 'DEBUG' if self.debug else 'INFO'
         if self.logger_colored is None:
@@ -80,7 +84,14 @@ class InternalConfig:
             self.reloader_enable = self.debug
         if self.newio_monitor_enable is None:
             self.newio_monitor_enable = self.debug
-        if self.response_json_pretty is None:
-            self.response_json_pretty = self.debug
-        if self.response_json_sort_keys is None:
-            self.response_json_sort_keys = self.debug
+        if self.json_pretty is None:
+            self.json_pretty = self.debug
+        if self.json_sort_keys is None:
+            self.json_sort_keys = self.debug
+        # check ujson
+        if self.json_ujson_enable:
+            try:
+                import ujson  # noqa
+            except ModuleNotFoundError:
+                msg = 'json_ujson_enable is set but ujson not installed!'
+                raise ConfigError(msg) from None

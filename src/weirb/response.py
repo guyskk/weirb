@@ -1,5 +1,9 @@
 import inspect
 import json
+try:
+    import ujson
+except ModuleNotFoundError:
+    ujson = None
 from http import HTTPStatus
 from werkzeug.http import dump_cookie
 from werkzeug.datastructures import Headers
@@ -119,11 +123,15 @@ class Response(AbstractResponse, ResponseCookieMixin, ResponseRedirectMixin):
             raise ValueError(msg)
 
     def json(self, value):
-        sort_keys = self.context.config.response_json_sort_keys
+        sort_keys = self.context.config.json_sort_keys
         indent = None
-        if self.context.config.response_json_pretty:
+        if self.context.config.json_pretty:
             indent = 4
-        text = json.dumps(
+        if self.context.config.json_ujson_enable:
+            dumps = ujson.dumps
+        else:
+            dumps = json.dumps
+        text = dumps(
             value, ensure_ascii=False, indent=indent, sort_keys=sort_keys)
         self.body = text.encode('utf-8')
         self.headers['Content-Type'] = 'application/json;charset=utf-8'

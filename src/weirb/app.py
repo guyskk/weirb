@@ -163,12 +163,12 @@ class App:
     def serve(self):
         if self.config.print_config:
             self.print_config()
-        if self.config.print_plugin:
-            self.print_plugin()
-        if self.config.print_service:
-            self.print_service()
-        if self.config.print_handler:
-            self.print_handler()
+        if self.config.print_plugins:
+            self.print_plugins()
+        if self.config.print_services:
+            self.print_services()
+        if self.config.print_handlers:
+            self.print_handlers()
         serve(self, self.config)
 
     def print_config(self):
@@ -182,7 +182,7 @@ class App:
         table = SingleTable(table, title='Configs')
         print(table.table)
 
-    def print_plugin(self):
+    def print_plugins(self):
         title = 'Plugins' if self.plugins else 'No Plugins'
         table = [('#', 'Name', 'Provides', 'Requires', 'Contributes')]
         for idx, plugin in enumerate(self.plugins, 1):
@@ -203,7 +203,7 @@ class App:
         table = SingleTable(table, title=title)
         print(table.table)
 
-    def print_service(self):
+    def print_services(self):
         title = 'Services' if self.services else 'No Services'
         table = [('#', 'Name', 'Handlers', 'Requires')]
         for idx, service in enumerate(self.services, 1):
@@ -215,7 +215,7 @@ class App:
         table = SingleTable(table, title=title)
         print(table.table)
 
-    def print_handler(self):
+    def print_handlers(self):
         title = 'Handlers' if self.services else 'No Handlers'
         table = [
             ['Service', 'Handler', 'Methods', 'Path'],
