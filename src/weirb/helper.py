@@ -34,11 +34,13 @@ def import_all_modules(import_name):
     if import_name == '__main__':
         return
     for root_path in set(getattr(root, '__path__', [])):
+        root_path = root_path.rstrip('/')
         for root, dirs, files in os.walk(root_path):
+            root = root.rstrip('/')
             if '__init__.py' in files:
                 module = root[len(root_path):].replace('/', '.')
                 if module:
-                    module = f'{import_name}.{module}'
+                    module = f'{import_name}{module}'
                 else:
                     module = import_name
                 yield importlib.import_module(module)

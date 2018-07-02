@@ -2,15 +2,16 @@ import logging
 import coloredlogs
 
 
-GREEN = 2
+GREEN = 42
 BLUE = 75
 PURPLE = 140
 RED = 9
+GRAY = 240
 
 DEFAULT_FIELD_STYLES = {
     'asctime': {'color': GREEN},
     'hostname': {'color': PURPLE},
-    'levelname': {'color': 'black', 'bold': True},
+    'levelname': {'color': GRAY, 'bold': True},
     'name': {'color': BLUE},
     'process': {'color': PURPLE},
     'programname': {'color': BLUE}
