@@ -2,7 +2,7 @@ import logging
 import coloredlogs
 
 
-GREEN = 42
+GREEN = 41
 BLUE = 75
 PURPLE = 140
 RED = 9
