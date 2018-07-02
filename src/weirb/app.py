@@ -14,7 +14,7 @@ from .request import Request
 from .response import Response
 from .error import ConfigError, DependencyError, HttpRedirect
 from .context import Context
-from .helper import import_all_modules, shorten_text
+from .helper import import_all_modules, shorten_text, concat_words
 from .config import InternalConfig, INTERNAL_VALIDATORS
 from .service import Service, Method
 from .router import Router
@@ -121,6 +121,7 @@ class App:
         self.contexts = []
         self.decorators = []
         self.provides = {f'config.{key}' for key in fields(self.config)}
+        self.provides.add('config')
         for plugin in self.plugins:
             plugin.active(self)
             if hasattr(plugin, 'context'):
@@ -185,17 +186,16 @@ class App:
         table = [('Key', 'Value', 'Schema')]
         config_schema = self.config.__schema__.items
         for key, value in sorted(asdict(self.config).items()):
-            schema = config_schema[key]
-            table.append(
-                (key, shorten_text(str(value)), shorten_text(schema.repr()))
-            )
+            schema = shorten_text(config_schema[key].repr())
+            value = shorten_text(str(value), 20)
+            table.append((key, value, schema))
         table = SingleTable(table, title='Configs')
         print(table.table)
 
     def print_plugins(self):
         title = 'Plugins' if self.plugins else 'No Plugins'
-        table = [('#', 'Name', 'Provides', 'Requires', 'Contributes')]
-        for idx, plugin in enumerate(self.plugins, 1):
+        table = [('Name', 'Provides', 'Requires', 'Contributes')]
+        for plugin in self.plugins:
             name = type(plugin).__name__
             contributes = []
             provides = ''
@@ -206,23 +206,25 @@ class App:
                 contributes.append('decorator')
             contributes = ', '.join(contributes)
             if hasattr(plugin, 'provides'):
-                provides = ', '.join(plugin.provides)
+                provides = '\n'.join(plugin.provides)
             if hasattr(plugin, 'requires'):
-                requires = ', '.join(plugin.requires)
-            table.append((idx, name, provides, requires, contributes))
+                requires = '\n'.join(plugin.requires)
+            table.append((name, provides, requires, contributes))
         table = SingleTable(table, title=title)
+        table.inner_row_border = True
         print(table.table)
 
     def print_services(self):
         title = 'Services' if self.services else 'No Services'
-        table = [('#', 'Name', 'Handlers', 'Requires')]
-        for idx, service in enumerate(self.services, 1):
+        table = [('Name', 'Handlers', 'Requires')]
+        for service in self.services:
             handlers = [m.name for m in service.handlers]
-            handlers = ', '.join(handlers)
+            handlers = concat_words(handlers, 30)
             requires = [field.key for field in service.fields.values()]
-            requires = ', '.join(requires)
-            table.append((idx, service.name, handlers, requires))
+            requires = '\n'.join(requires)
+            table.append((service.name, handlers, requires))
         table = SingleTable(table, title=title)
+        table.inner_row_border = True
         print(table.table)
 
     def print_handlers(self):
@@ -236,7 +238,7 @@ class App:
                     if isinstance(handler, Method):
                         methods = '*POST'
                     else:
-                        methods = ' '.join(route.methods)
+                        methods = ' ' + concat_words(route.methods, sep=' ')
                     table.append((
                         service.name,
                         handler.name,

@@ -8,7 +8,7 @@ class Context:
         self._config = app._config_dict
         self._contexts = [c(self) for c in app.contexts]
         self._handler = app._handler
-        self._container = {}
+        self._container = {'config': app.config}
         self._providers = {}
 
     def require(self, key):

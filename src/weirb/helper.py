@@ -12,8 +12,25 @@ async def stream(data):
     yield data
 
 
-def shorten_text(x, w=30):
-    return (x[:w] + '...') if len(x) > w else x
+def shorten_text(x, width=30):
+    return (x[:width] + '...') if len(x) > width else x
+
+
+def concat_words(words, width=30, sep=', '):
+    lines = []
+    current_words = []
+    remain_width = width
+    for w in words:
+        if (not current_words) or len(w) <= remain_width:
+            current_words.append(w)
+            remain_width -= len(w) + len(sep)
+        else:
+            lines.append(sep.join(current_words))
+            current_words = [w]
+            remain_width = width - (len(w) + len(sep))
+    if current_words:
+        lines.append(sep.join(current_words))
+    return '\n'.join(lines)
 
 
 def find_version():

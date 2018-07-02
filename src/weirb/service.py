@@ -9,6 +9,7 @@ from .response import Response
 from .helper import HTTP_METHODS
 from .tagger import tagger
 from .error import (
+    DependencyError,
     HrpcError,
     HrpcServerError,
     HrpcInvalidParams,
@@ -111,7 +112,7 @@ class Service:
                 if not isinstance(v, Dependency):
                     continue
                 if v.key not in self.app.provides:
-                    raise ValueError(f'dependency {v.key!r} not exists')
+                    raise DependencyError(f'dependency {v.key!r} not exists')
                 self.fields[k] = DependencyField(k, v.key)
 
     def __load_cls(self):
