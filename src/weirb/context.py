@@ -53,9 +53,7 @@ class Context:
                 try:
                     ret = await ctx.athrow(current_error)
                 except StopAsyncIteration as stop:
-                    if stop.value:
-                        msg = f'context {ctx} must not return non-None value'
-                        error = RuntimeError(msg)
+                    pass  # ignore
                 except BaseException as ex:
                     error = ex
                 else:
@@ -75,11 +73,7 @@ class Context:
                 else:
                     await ctx.asend(None)
             except StopAsyncIteration as stop:
-                if stop.value:
-                    msg = f'context {ctx} must not return non-None value'
-                    error = RuntimeError(msg)
-                else:
-                    error = None
+                pass  # ignore
             except BaseException as ex:
                 error = ex
             else:

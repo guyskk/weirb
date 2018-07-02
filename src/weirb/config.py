@@ -36,7 +36,7 @@ class InternalConfig:
     print_config = T.bool.default(False)
     print_plugins = T.bool.default(False)
     print_services = T.bool.default(False)
-    print_handlers = T.bool.default(False)
+    print_handlers = T.bool.optional
 
     debug = T.bool.default(False)
     host = T.str.default('127.0.0.1')
@@ -80,6 +80,8 @@ class InternalConfig:
             self.logger_level = 'DEBUG' if self.debug else 'INFO'
         if self.logger_colored is None:
             self.logger_colored = self.debug
+        if self.print_handlers is None:
+            self.print_handlers = self.debug
         if self.reloader_enable is None:
             self.reloader_enable = self.debug
         if self.newio_monitor_enable is None:

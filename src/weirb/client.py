@@ -54,8 +54,9 @@ class ClientRequest(RawRequest):
 
 
 class ClientResponse:
-    def __init__(self, status, headers, content):
+    def __init__(self, status, status_text, headers, content):
         self.status = status
+        self.status_text = status_text
         self.headers = ClientHeaders(headers or {})
         self.content = content
         self.__repr_text = self.__repr()
@@ -118,6 +119,7 @@ class ClientResponse:
         return json.loads(self.text)
 
     def __repr(self):
+        status_line = f'{self.status} {self.status_text}'
         headers = _format_headers(self.headers)
         if self.is_json:
             try:
@@ -133,10 +135,12 @@ class ClientResponse:
                 text = f'Failed to decode response content: {ex}'
             text = shorten_text(text, 80 * 3)
         text = text.strip()
+        ret = '\n' + status_line
         if headers:
-            return f'\n{headers}\n\n{text}\n'
-        else:
-            return f'\n{text}\n'
+            ret += '\n' + headers + '\n'
+        if text:
+            ret += '\n' + text + '\n'
+        return ret
 
     def __repr__(self):
         return self.__repr_text
@@ -185,7 +189,8 @@ class Client:
         async for chunk in response.body:
             content.append(chunk)
         content = b''.join(content)
-        return ClientResponse(response.status, response.headers, content)
+        return ClientResponse(
+            response.status, response.status_text, response.headers, content)
 
     def request(self, path, *, method, query=None, body=None, headers=None):
         return run(self.__request(
@@ -199,7 +204,8 @@ class Client:
         else:
             headers = Headers()
         if data is not None:
-            headers.setdefault('Content-Type', 'application/x-www-form-urlencoded')
+            headers.setdefault(
+                'Content-Type', 'application/x-www-form-urlencoded')
             body = urlencode(data).encode('utf-8')
         else:
             body = None

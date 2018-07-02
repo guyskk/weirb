@@ -68,5 +68,5 @@ class Shell:
         context = self._context_locals()
         banner = self._format_banner()
         _enable_completer(context)
-        sys.ps1 = 'Weirb> '
+        sys.ps1 = 'Wb> '
         code.interact(banner=banner, local=context, exitmsg='')

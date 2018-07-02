@@ -112,6 +112,12 @@ class Server:
         if not self.config.reloader_enable:
             return
         extra_files = self.config.reloader_extra_files
+        if not extra_files:
+            extra_files = set()
+        else:
+            extra_files = set(extra_files)
+        if self.app.config_path:
+            extra_files.add(self.app.config_path)
         reloader = Reloader(
             callback=self._reload, extra_files=extra_files)
         reloader.start()

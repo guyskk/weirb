@@ -2,6 +2,7 @@ import os
 import inspect
 import logging
 from importlib import import_module
+from pathlib import Path
 
 import toml
 from terminaltables import SingleTable
@@ -35,6 +36,7 @@ class App:
         self._active_plugins()
         self._load_services()
         self.router = Router(self.services, self.config.server_name)
+        self._print_info()
 
     def __repr__(self):
         return f'<App {self.import_name}>'
@@ -82,11 +84,16 @@ class App:
         self.config_class = modelclass(
             config_class, compiler=self.schema_compiler, immutable=True)
 
+    def _normalize_config_path(self, config_path):
+        config_path = Path(config_path).expanduser()
+        return str(config_path.absolute())
+
     def _load_config(self, cli_config):
         name = self.import_name.replace('.', '_')
         key = f'{name}_config'.upper()
         config_path = os.getenv(key, None)
         if config_path:
+            config_path = self._normalize_config_path(config_path)
             print(f'[INFO] Load config file {config_path!r}')
             try:
                 with open(config_path) as f:
@@ -104,6 +111,7 @@ class App:
             print(f'[INFO] No config file provided '
                   f'by {key} environment variable')
             config = cli_config
+        self.config_path = config_path
         try:
             self.config = self.config_class(**config)
         except Invalid as ex:
@@ -161,6 +169,9 @@ class App:
         return await handler(context, request)
 
     def serve(self):
+        serve(self, self.config)
+
+    def _print_info(self):
         if self.config.print_config:
             self.print_config()
         if self.config.print_plugins:
@@ -169,7 +180,6 @@ class App:
             self.print_services()
         if self.config.print_handlers:
             self.print_handlers()
-        serve(self, self.config)
 
     def print_config(self):
         table = [('Key', 'Value', 'Schema')]
