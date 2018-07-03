@@ -18,9 +18,9 @@ setup(
     package_dir={'': 'src'},
     python_requires='>=3.6',
     install_requires=[
-        'newio>=0.4.1',
-        'newio-kernel>=0.4.1',
-        'validr>=1.0.0',
+        'newio>=0.4.3',
+        'newio-kernel>=0.4.3',
+        'validr>=1.0.1',
         'toml>=0.9.4',
         'click>=6.7',
         'gunicorn>=19.8',

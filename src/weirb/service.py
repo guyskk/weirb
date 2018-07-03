@@ -8,8 +8,8 @@ from validr import T, Invalid
 from .response import Response
 from .helper import HTTP_METHODS
 from .tagger import tagger
+from .scope import Scope
 from .error import (
-    DependencyError,
     HrpcError,
     HrpcServerError,
     HrpcInvalidParams,
@@ -28,14 +28,14 @@ class Route:
 
 def route(path, *, methods):
     methods = _normalize_methods(methods)
-    return tagger.stackable_tag('routes', Route(path, methods))
+    return tagger.stackable_tag("routes", Route(path, methods))
 
 
 def _normalize_methods(methods):
     methods = set(x.upper() for x in methods)
     unknown = set(methods) - set(HTTP_METHODS)
     if unknown:
-        raise ValueError(f'unknown methods {unknown!r}')
+        raise ValueError(f"unknown methods {unknown!r}")
     return methods
 
 
@@ -48,81 +48,35 @@ _build_route()
 del _build_route
 
 
-get_routes = tagger.get('routes')
+get_routes = tagger.get("routes")
 
 
 def raises(*errors):
     for e in errors:
         if not issubclass(e, HrpcError):
-            raise TypeError('Can only raises subtypes of HrpcError')
-    return tagger.stackable_tag('raises', errors)
+            raise TypeError("Can only raises subtypes of HrpcError")
+    return tagger.stackable_tag("raises", errors)
 
 
-get_raises = tagger.get('raises', default=None)
-
-
-class Dependency:
-    def __init__(self, key):
-        self.key = key
-
-
-def require(key):
-    return Dependency(key)
-
-
-class DependencyField:
-
-    def __init__(self, name, key):
-        self.name = name
-        self.key = key
-
-    def __get__(self, obj, obj_type):
-        if obj is None:
-            return self
-        if self.name in obj.__dict__:
-            return obj.__dict__[self.name]
-        value = obj.context.require(self.key)
-        obj.__dict__[self.name] = value
-        return value
+get_raises = tagger.get("raises", default=None)
 
 
 class Service:
-
     @staticmethod
     def is_service(name):
-        return name.endswith('Service') and name != 'Service'
+        return name.endswith("Service") and name != "Service"
 
     def __init__(self, app, cls):
         self.app = app
         self.raw_cls = cls
-        self.name = cls.__name__[:-len('Service')]
+        self.scope = Scope(cls, app.provides)
+        self.name = cls.__name__[: -len("Service")]
         self.doc = cls.__doc__
-        self.__load_fields()
-        self.__load_cls()
         self.__load_handlers()
 
     def __repr__(self):
-        handlers = ', '.join(m.name for m in self.handlers)
-        return f'<Service {self.name}: {handlers}>'
-
-    def __load_fields(self):
-        self.fields = {}
-        for cls in reversed(self.raw_cls.__mro__):
-            for k, v in vars(cls).items():
-                if not isinstance(v, Dependency):
-                    continue
-                if v.key not in self.app.provides:
-                    raise DependencyError(f'dependency {v.key!r} not exists')
-                self.fields[k] = DependencyField(k, v.key)
-
-    def __load_cls(self):
-        base = self.raw_cls
-        cls = type(base.__name__, (base,), self.fields)
-        cls.__module__ = base.__module__
-        cls.__name__ = base.__name__
-        cls.__qualname__ = base.__qualname__
-        cls.__doc__ = base.__doc__
-        self.cls = cls
+        handlers = ", ".join(m.name for m in self.handlers)
+        return f"<Service {self.name}: {handlers}>"
 
     def __load_handlers(self):
         self.handlers = []
@@ -146,7 +100,7 @@ class Service:
         return View(self, name, f)
 
     def __is_method(self, name, f):
-        return name.startswith('method_') and name != 'method_'
+        return name.startswith("method_") and name != "method_"
 
     def __load_method(self, name, f):
         self.__check_handler_func(name, f)
@@ -155,11 +109,11 @@ class Service:
     def __check_handler_func(self, name, f):
         class_name = self.raw_cls.__name__
         if not inspect.iscoroutinefunction(f):
-            raise TypeError(f'{class_name}.{name} is not coroutine function')
+            raise TypeError(f"{class_name}.{name} is not coroutine function")
 
     def __decorate(self, handler):
         origin = f = handler.f
-        for d in self.app.decorators:
+        for d in reversed(self.app.decorators):
             f = d(f, handler)
         f.__name__ = origin.__name__
         f.__qualname__ = origin.__qualname__
@@ -169,10 +123,9 @@ class Service:
 
 
 class Handler:
-
     def __init__(self, service, name, f):
         self.service = service
-        self.service_class = service.cls
+        self.instance_service = service.scope.instance
         self.service_name = service.name
         self.root_path = self.service.app.config.root_path
         self.tags = tagger.get_tags(f)
@@ -180,14 +133,13 @@ class Handler:
         self.f = f
 
     def __repr__(self):
-        return f'<{type(self).__name__} {self.service_name}.{self.name}>'
+        return f"<{type(self).__name__} {self.service_name}.{self.name}>"
 
     def fix_path(self, path):
-        return (self.root_path + path.lstrip('/')).lower()
+        return (self.root_path + path.lstrip("/")).lower()
 
 
 class View(Handler):
-
     def __init__(self, service, name, f):
         super().__init__(service, name, f)
         self.is_method = False
@@ -198,8 +150,7 @@ class View(Handler):
             self.routes.append(Route(path, route.methods))
 
     async def __call__(self, context, request):
-        service = self.service_class()
-        service.context = context
+        service = self.instance_service(context)
         service.request = request
         service.response = Response(context)
         await self.f(service, **request.path_params)
@@ -207,16 +158,16 @@ class View(Handler):
 
 
 class Method(Handler):
-
     def __init__(self, service, name, f):
         super().__init__(service, name, f)
         self.is_method = True
-        self.name = name[len('method_'):]
+        self.name = name[len("method_") :]
         self.schema_compiler = service.app.schema_compiler
-        self.routes = [Route(
-            path=self.fix_path(f'{self.service_name}/{self.name}'),
-            methods=['POST'],
-        )]
+        self.routes = [
+            Route(
+                path=self.fix_path(f"{self.service_name}/{self.name}"), methods=["POST"]
+            )
+        ]
         self.params = self.__get_params(f)
         self.returns = self.__get_returns(f)
         self.raises = self.__get_raises(f)
@@ -254,17 +205,17 @@ class Method(Handler):
 
     def __set_error(self, response, ex):
         response.status = ex.status
-        response.headers['Hrpc-Error'] = ex.code
+        response.headers["Hrpc-Error"] = ex.code
         response.json(dict(message=ex.message, data=ex.data))
 
     async def __call__(self, context, request):
-        service = self.service_class()
+        service = self.instance_service(context)
         try:
             return await self.__call(service, context, request)
         except HrpcError as ex:
             self.__set_error(service.response, ex)
         except Exception as ex:
-            LOG.error('Error raised when handle request:', exc_info=ex)
+            LOG.error("Error raised when handle request:", exc_info=ex)
             self.__set_error(service.response, HrpcServerError())
         return service.response
 
@@ -287,7 +238,7 @@ class Method(Handler):
             try:
                 returns = self.__returns_validator(returns)
             except Invalid as ex:
-                msg = f'Service return a invalid result: {ex}'
+                msg = f"Service return a invalid result: {ex}"
                 raise HrpcServerError(msg)
             service.response.json(returns)
         return service.response

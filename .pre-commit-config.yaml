@@ -15,10 +15,7 @@ repos:
   - id: check-yaml
   - id: debug-statements
   - id: check-docstring-first
-  - id: double-quote-string-fixer
-  - id: fix-encoding-pragma
-    args:
-      - '--remove'
   - id: flake8
     args:
       - '--max-line-length=90'
+      - '--ignore=E203'
