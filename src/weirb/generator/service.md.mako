@@ -13,11 +13,11 @@ ${doc or 'No Doc'}
 %for handler in handlers:
 
 ${'##'} \
-% if handler['is_method']:
+%if handler['is_method']:
 Method: \
-% else:
+%else:
 View: \
-% endif
+%endif
 **${handler['name']}** ${'##'}
 
 ${handler['doc'] or 'No Doc'}
@@ -26,15 +26,15 @@ ${handler['doc'] or 'No Doc'}
 
 Path         | Methods
 ------------ | ----------------
-% for route in handler['routes']:
+%for route in handler['routes']:
 ${route['path']} | ${route['methods']}
-% endfor
+%endfor
 
-% if handler['is_method']:
+%if handler['is_method']:
 **Params**:
 ```
     %if handler['params'] is None:
-**No Params**
+No Params
     %else:
 ${handler['params']}
     %endif
@@ -42,8 +42,8 @@ ${handler['params']}
 
 **Returns**:
 ```
-    %if handler['params'] is None:
-**No Returns**
+    %if handler['returns'] is None:
+No Returns
     %else:
 ${handler['returns']}
     %endif
@@ -59,14 +59,6 @@ Status Code  | Error Code        | Description
 %for error in handler['raises']:
 ${error['status']}  | ${error['code']}  | ${error['doc'] or 'No Doc'}
 %endfor
-
-##         %for error in handler['raises']:
-##             %if error['doc']:
-## - ${error['status']} ${error['code']}: ${error['doc']}
-##             %else:
-## - ${error['status']} ${error['code']}}
-##             %endif
-##         %endfor
     %endif
-% endif
+%endif
 %endfor

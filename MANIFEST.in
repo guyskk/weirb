@@ -1,2 +1,3 @@
 include src/weirb/generator/*.mako
 recursive-include src/weirb/docs-template *
+recursive-include src/weirb/project-template *

@@ -10,10 +10,9 @@ from .helper import HTTP_METHODS
 from .tagger import tagger
 from .scope import Scope
 from .error import (
-    HrpcError,
-    HrpcServerError,
-    HrpcInvalidParams,
     BadRequest,
+    HrpcError,
+    HrpcInvalidParams,
     HrpcInvalidRequest,
 )
 
@@ -214,9 +213,6 @@ class Method(Handler):
             return await self.__call(service, context, request)
         except HrpcError as ex:
             self.__set_error(service.response, ex)
-        except Exception as ex:
-            LOG.error("Error raised when handle request:", exc_info=ex)
-            self.__set_error(service.response, HrpcServerError())
         return service.response
 
     async def __call(self, service, context, request):
@@ -238,8 +234,8 @@ class Method(Handler):
             try:
                 returns = self.__returns_validator(returns)
             except Invalid as ex:
-                msg = f"Service return a invalid result: {ex}"
-                raise HrpcServerError(msg)
+                LOG.error(f"Service return a invalid result: {ex}")
+                raise
             service.response.json(returns)
         return service.response
 
