@@ -10,10 +10,8 @@ from .helper import HTTP_METHODS
 from .tagger import tagger
 from .scope import Scope
 from .error import (
-    BadRequest,
     HrpcError,
     HrpcInvalidParams,
-    HrpcInvalidRequest,
 )
 
 LOG = logging.getLogger(__name__)
@@ -216,12 +214,11 @@ class Method(Handler):
         return service.response
 
     async def __call(self, service, context, request):
-        service.context = context
         service.request = request
         service.response = Response(context)
         # prepare request
         if self.__params_validator is not None:
-            params = await self.__parse_request(request)
+            params = await request.json()
             try:
                 params = self.__params_validator(params)
             except Invalid as ex:
@@ -238,10 +235,3 @@ class Method(Handler):
                 raise
             service.response.json(returns)
         return service.response
-
-    async def __parse_request(self, request):
-        try:
-            params = await request.json()
-        except BadRequest as ex:
-            raise HrpcInvalidRequest(ex.message) from ex
-        return params

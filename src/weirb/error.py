@@ -91,13 +91,6 @@ class HrpcError(HttpError):
         return f"<{type(self).__name__} {self.status}:{self.code}>"
 
 
-class HrpcInvalidRequest(HrpcError):
-    """Request format invalid"""
-
-    status = 400
-    code = "Hrpc.InvalidRequest"
-
-
 class HrpcInvalidParams(HrpcError):
     """Request params invalid"""
 
@@ -105,4 +98,4 @@ class HrpcInvalidParams(HrpcError):
     code = "Hrpc.InvalidParams"
 
 
-BUILTIN_HRPC_ERRORS = [HrpcInvalidRequest, HrpcInvalidParams]
+BUILTIN_HRPC_ERRORS = [HrpcInvalidParams]

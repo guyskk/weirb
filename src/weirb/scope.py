@@ -16,6 +16,7 @@ class DependencyField:
     def __init__(self, name, key):
         self.name = name
         self.key = key
+        self.requires = frozenset({key})
 
     def __get__(self, obj, obj_type):
         if obj is None:
@@ -31,6 +32,7 @@ class ScopeField:
     def __init__(self, name, scope):
         self.name = name
         self.scope = scope
+        self.requires = scope.requires
 
     def __get__(self, obj, obj_type):
         if obj is None:
@@ -48,6 +50,7 @@ class Scope:
         self.base = base
         self.provides = provides
         self._load_fields()
+        self._load_requires()
         self._load_cls()
 
     def __repr__(self):
@@ -71,6 +74,12 @@ class Scope:
                     if v.key not in self.provides:
                         raise DependencyError(f"dependency {v.key!r} not exists")
                     self.fields[k] = DependencyField(k, v.key)
+
+    def _load_requires(self):
+        requires = set()
+        for field in self.fields.values():
+            requires.update(field.requires)
+        self.requires = frozenset(requires)
 
     def _load_cls(self):
         cls = type(self.base.__name__, (self.base,), self.fields)

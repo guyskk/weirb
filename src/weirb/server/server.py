@@ -125,7 +125,7 @@ class Server:
 
     def _process(self, i):
         pid = os.getpid()
-        LOG.info(f'Process#{i} pid={pid} started')
+        print(f'* Process#{i} pid={pid} started')
         try:
             self._runner(self._serve_forever())
         except KeyboardInterrupt:
@@ -133,7 +133,7 @@ class Server:
         except Exception as ex:
             LOG.exception(ex)
         finally:
-            LOG.info(f'Process#{i} pid={pid} exited')
+            print(f'* Process#{i} pid={pid} exited')
 
     def _reload(self, filename):
         if self._reloading:
@@ -151,12 +151,12 @@ class Server:
             if my_timeout > 0:
                 p.join(timeout=my_timeout)
             if p.is_alive():
-                LOG.info(f'Process#{i} pid={p.pid} force terminated')
+                print(f'* Process#{i} pid={p.pid} force terminated')
                 p.terminate()
             p.join()
 
     def start(self):
-        LOG.info(f'Starting {self.num_process} processes')
+        print(f'* Starting {self.num_process} processes')
         for p in self._processes:
             p.start()
         self._start_reloader()
@@ -164,7 +164,7 @@ class Server:
             try:
                 p.join()
             except KeyboardInterrupt:
-                LOG.info('Shutting down processes')
+                print('* Shutting down processes')
                 break
         self._stop_processes()
         if self._reloading:
