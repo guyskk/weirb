@@ -19,7 +19,7 @@ from .config import InternalConfig, INTERNAL_VALIDATORS
 from .service import Service, Method
 from .router import Router
 from .scope import Scope
-
+from .compat.contextlib import asynccontextmanager
 
 LOG = logging.getLogger(__name__)
 
@@ -134,7 +134,10 @@ class App:
         for plugin in self.plugins:
             plugin.active(self)
             if hasattr(plugin, "context"):
-                self.contexts.append(plugin.context)
+                context = plugin.context
+                if inspect.isasyncgenfunction(plugin.context):
+                    context = asynccontextmanager(plugin.context)
+                self.contexts.append(context)
             if hasattr(plugin, "decorator"):
                 self.decorators.append(plugin.decorator)
             if hasattr(plugin, "provides"):

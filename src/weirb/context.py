@@ -1,4 +1,7 @@
+import sys
+
 from .error import DependencyError
+from .compat.contextlib import AsyncExitStack
 
 
 class Context:
@@ -35,58 +38,14 @@ class Context:
         return await self._handler(self, raw_request)
 
     async def __aenter__(self):
-        error = None
-        for i, ctx in enumerate(self._contexts):
-            try:
-                ret = await ctx.asend(None)
-            except StopAsyncIteration:
-                error = RuntimeError(f"context {ctx} not yield")
-            except BaseException as ex:
-                error = ex
-            else:
-                if ret is not None:
-                    msg = f"context {ctx} must not yield non-None value"
-                    error = RuntimeError(msg)
-            if error is not None:
-                break
-        if error is not None:
-            current_error = error
-            for ctx in reversed(self._contexts[:i]):
-                try:
-                    ret = await ctx.athrow(current_error)
-                except StopAsyncIteration as stop:
-                    pass  # ignore
-                except BaseException as ex:
-                    error = ex
-                else:
-                    error = RuntimeError(f"context {ctx} not stop after throw")
-                if error is not current_error:
-                    error.__cause__ = current_error
-                    current_error = error
-            raise current_error
+        self._stack = await AsyncExitStack().__aenter__()
+        try:
+            for ctx in self._contexts:
+                await self._stack.enter_async_context(ctx)
+        except BaseException:
+            await self._stack.__aexit__(*sys.exc_info())
+            raise
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        current_error = error = exc
-        for ctx in reversed(self._contexts):
-            try:
-                if current_error is not None:
-                    await ctx.athrow(current_error)
-                else:
-                    await ctx.asend(None)
-            except StopAsyncIteration as stop:
-                pass  # ignore
-            except BaseException as ex:
-                error = ex
-            else:
-                error = RuntimeError(f"context {ctx} not stop after throw")
-            if error is None:
-                current_error = None
-            else:
-                if current_error is None:
-                    current_error = error
-                elif error is not current_error:
-                    error.__cause__ = current_error
-                    current_error = error
-        if current_error is not exc:
-            raise current_error
+        return await self._stack.__aexit__(exc_type, exc, tb)
