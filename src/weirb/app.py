@@ -31,7 +31,7 @@ class App:
         self._load_schema_compiler()
         self._load_config_class()
         self._load_config(cli_config)
-        config_logging(self.config)
+        config_logging(self.import_name, self.config)
         self._config_dict = asdict(self.config)
         self._active_plugins()
         self._load_services()
