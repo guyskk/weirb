@@ -16,7 +16,6 @@ class DependencyField:
     def __init__(self, name, key):
         self.name = name
         self.key = key
-        self.requires = frozenset({key})
 
     def __get__(self, obj, obj_type):
         if obj is None:
@@ -28,63 +27,45 @@ class DependencyField:
         return value
 
 
-class ScopeField:
-    def __init__(self, name, scope):
-        self.name = name
-        self.scope = scope
-        self.requires = scope.requires
-
-    def __get__(self, obj, obj_type):
-        if obj is None:
-            return self
-        if self.name in obj.__dict__:
-            return obj.__dict__[self.name]
-        value = self.scope.instance(obj.context)
-        obj.__dict__[self.name] = value
-        return value
-
-
 class Scope:
-    def __init__(self, base, provides):
-        self.name = base.__module__ + "." + base.__name__
-        self.base = base
-        self.provides = provides
+    def __init__(self, app, cls):
+        self.name = cls.__module__ + "." + cls.__name__
+        self.cls = cls
+        self.app = app
         self._load_fields()
-        self._load_requires()
-        self._load_cls()
+        self._load_scope_class()
 
     def __repr__(self):
         return f"<{type(self).__name__} {self.name}>"
 
     def instance(self, context):
-        obj = self.cls()
+        obj = self.scope_class()
         obj.context = context
         return obj
 
     def _load_fields(self):
-        self.fields = {}
-        for cls in reversed(self.base.__mro__):
+        fields = {}
+        requires = set()
+        for cls in reversed(self.cls.__mro__):
             for k, v in vars(cls).items():
                 if not isinstance(v, Dependency):
                     continue
                 if inspect.isclass(v.key):
-                    scope = Scope(v.key, self.provides)
-                    self.fields[k] = ScopeField(k, scope)
+                    scope = self.app.create_scope(v.key)
+                    fields[k] = DependencyField(k, v.key)
+                    requires.update(scope.requires)
                 else:
-                    if v.key not in self.provides:
+                    if v.key not in self.app.provides:
                         raise DependencyError(f"dependency {v.key!r} not exists")
-                    self.fields[k] = DependencyField(k, v.key)
-
-    def _load_requires(self):
-        requires = set()
-        for field in self.fields.values():
-            requires.update(field.requires)
+                    fields[k] = DependencyField(k, v.key)
+                    requires.add(v.key)
         self.requires = frozenset(requires)
+        self.fields = fields
 
-    def _load_cls(self):
-        cls = type(self.base.__name__, (self.base,), self.fields)
-        cls.__module__ = self.base.__module__
-        cls.__name__ = self.base.__name__
-        cls.__qualname__ = self.base.__qualname__
-        cls.__doc__ = self.base.__doc__
-        self.cls = cls
+    def _load_scope_class(self):
+        scope_class = type(self.cls.__name__, (self.cls,), self.fields)
+        scope_class.__module__ = self.cls.__module__
+        scope_class.__name__ = self.cls.__name__
+        scope_class.__qualname__ = self.cls.__qualname__
+        scope_class.__doc__ = self.cls.__doc__
+        self.scope_class = scope_class

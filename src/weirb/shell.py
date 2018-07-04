@@ -100,8 +100,8 @@ class Shell:
     def _format_banner(self):
         python_version = "{}.{}.{}".format(*sys.version_info)
         banner = [
-            f"Python {python_version} Weirb Shell\n\n",
-            "Locals: " + ", ".join(self._context_locals()) + "\n",
+            f"Python {python_version} Weirb Shell\n",
+            "Locals: " + ", ".join(self._context_locals()),
         ]
         return "".join(banner)
 

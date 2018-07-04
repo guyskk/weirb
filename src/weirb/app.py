@@ -1,11 +1,12 @@
 import os
 import logging
+import inspect
 from importlib import import_module
 from pathlib import Path
 
 import toml
 from terminaltables import SingleTable
-from validr import modelclass, Invalid, Compiler, fields, asdict
+from validr import modelclass, Invalid, Compiler, asdict
 
 from .server import serve
 from .logger import config_logging
@@ -17,6 +18,8 @@ from .helper import import_all_classes, shorten_text, concat_words
 from .config import InternalConfig, INTERNAL_VALIDATORS
 from .service import Service, Method
 from .router import Router
+from .scope import Scope
+
 
 LOG = logging.getLogger(__name__)
 
@@ -31,7 +34,7 @@ class App:
         self._load_config_class()
         self._load_config(cli_config)
         config_logging(self.import_name, self.config)
-        self._config_dict = asdict(self.config)
+        self._scopes = {}
         self._active_plugins()
         self._load_services()
         self.router = Router(self.services, self.config.server_name)
@@ -39,6 +42,11 @@ class App:
 
     def __repr__(self):
         return f"<App {self.import_name}>"
+
+    def create_scope(self, cls):
+        if cls not in self._scopes:
+            self._scopes[cls] = Scope(self, cls)
+        return self._scopes[cls]
 
     def _load_config_module(self):
         self.config_module = None
@@ -115,12 +123,14 @@ class App:
             self.config = self.config_class(**config)
         except Invalid as ex:
             raise ConfigError(ex.message) from None
+        self._config_dict = {'config': self.config}
+        for k, v in asdict(self.config).items():
+            self._config_dict[f'config.{k}'] = v
 
     def _active_plugins(self):
         self.contexts = []
         self.decorators = []
-        self.provides = {f"config.{key}" for key in fields(self.config)}
-        self.provides.add("config")
+        self.provides = set(self._config_dict)
         for plugin in self.plugins:
             plugin.active(self)
             if hasattr(plugin, "context"):
@@ -129,10 +139,15 @@ class App:
                 self.decorators.append(plugin.decorator)
             if hasattr(plugin, "provides"):
                 self.provides.update(plugin.provides)
-        for plugin in self.plugins:
             if not hasattr(plugin, "requires"):
                 continue
-            requires = set(plugin.requires)
+            requires = set()
+            for r in plugin.requires:
+                if inspect.isclass(r):
+                    scope = self.create_scope(r)
+                    requires.update(scope.requires)
+                else:
+                    requires.add(r)
             missing = ", ".join(requires - self.provides)
             if missing:
                 msg = f"the requires {missing} of plugin {plugin} is missing"

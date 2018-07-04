@@ -2,26 +2,28 @@ from .error import DependencyError
 
 
 class Context:
-
     def __init__(self, app):
         self.config = app.config
         self._config = app._config_dict
+        self._scopes = app._scopes
         self._contexts = [c(self) for c in app.contexts]
         self._handler = app._handler
-        self._container = {'config': app.config}
+        self._container = {}
         self._providers = {}
 
     def require(self, key):
-        if key.startswith('config.'):
-            config_key = key[7:]
-            if config_key not in self._config:
-                raise DependencyError(f'dependency {key!r} not exists')
-            return self._config[config_key]
-        if key not in self._container:
-            if key not in self._providers:
-                raise DependencyError(f'dependency {key!r} not exists')
-            self._container[key] = self._providers[key]()
-        return self._container[key]
+        if key in self._config:
+            return self._config[key]
+        if key in self._container:
+            return self._container[key]
+        if key in self._providers:
+            value = self._providers[key](self)
+        elif key in self._scopes:
+            value = self._scopes[key].instance(self)
+        else:
+            raise DependencyError(f"dependency {key!r} not exists")
+        self._container[key] = value
+        return value
 
     def provide(self, key, value, *, lazy=False):
         if lazy:
@@ -38,12 +40,12 @@ class Context:
             try:
                 ret = await ctx.asend(None)
             except StopAsyncIteration:
-                error = RuntimeError(f'context {ctx} not yield')
+                error = RuntimeError(f"context {ctx} not yield")
             except BaseException as ex:
                 error = ex
             else:
                 if ret is not None:
-                    msg = f'context {ctx} must not yield non-None value'
+                    msg = f"context {ctx} must not yield non-None value"
                     error = RuntimeError(msg)
             if error is not None:
                 break
@@ -57,7 +59,7 @@ class Context:
                 except BaseException as ex:
                     error = ex
                 else:
-                    error = RuntimeError(f'context {ctx} not stop after throw')
+                    error = RuntimeError(f"context {ctx} not stop after throw")
                 if error is not current_error:
                     error.__cause__ = current_error
                     current_error = error
@@ -77,7 +79,7 @@ class Context:
             except BaseException as ex:
                 error = ex
             else:
-                error = RuntimeError(f'context {ctx} not stop after throw')
+                error = RuntimeError(f"context {ctx} not stop after throw")
             if error is None:
                 current_error = None
             else:

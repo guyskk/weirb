@@ -8,11 +8,7 @@ from validr import T, Invalid
 from .response import Response
 from .helper import HTTP_METHODS
 from .tagger import tagger
-from .scope import Scope
-from .error import (
-    HrpcError,
-    HrpcInvalidParams,
-)
+from .error import HrpcError, HrpcInvalidParams
 
 LOG = logging.getLogger(__name__)
 
@@ -59,14 +55,10 @@ get_raises = tagger.get("raises", default=None)
 
 
 class Service:
-    @staticmethod
-    def is_service(name):
-        return name.endswith("Service") and name != "Service"
-
     def __init__(self, app, cls):
         self.app = app
-        self.raw_cls = cls
-        self.scope = Scope(cls, app.provides)
+        self.cls = cls
+        self.scope = app.create_scope(cls)
         self.name = cls.__name__[: -len("Service")]
         self.doc = cls.__doc__
         self.__load_handlers()
@@ -77,7 +69,7 @@ class Service:
 
     def __load_handlers(self):
         self.handlers = []
-        for name, f in vars(self.raw_cls).items():
+        for name, f in vars(self.cls).items():
             if not callable(f):
                 continue
             if self.__is_view(name, f):
@@ -104,7 +96,7 @@ class Service:
         return Method(self, name, f)
 
     def __check_handler_func(self, name, f):
-        class_name = self.raw_cls.__name__
+        class_name = self.cls.__name__
         if not inspect.iscoroutinefunction(f):
             raise TypeError(f"{class_name}.{name} is not coroutine function")
 
