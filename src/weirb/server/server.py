@@ -21,7 +21,7 @@ from gunicorn.reloader import Reloader
 from .parser import RequestParser
 from .worker import Worker
 
-__all__ = ('serve',)
+__all__ = ("serve",)
 
 
 LOG = logging.getLogger(__name__)
@@ -38,29 +38,28 @@ PURPLE = 140
 RED = 9
 
 DEFAULT_FIELD_STYLES = {
-    'asctime': {'color': GREEN},
-    'hostname': {'color': PURPLE},
-    'levelname': {'color': 'black', 'bold': True},
-    'name': {'color': BLUE},
-    'process': {'color': PURPLE},
-    'programname': {'color': BLUE}
+    "asctime": {"color": GREEN},
+    "hostname": {"color": PURPLE},
+    "levelname": {"color": "black", "bold": True},
+    "name": {"color": BLUE},
+    "process": {"color": PURPLE},
+    "programname": {"color": BLUE},
 }
 
 DEFAULT_LEVEL_STYLES = {
-    'spam': {'color': GREEN, 'faint': True},
-    'success': {'color': GREEN, 'bold': True},
-    'verbose': {'color': GREEN},
-    'debug': {'color': GREEN},
-    'info': {},
-    'notice': {},
-    'error': {'color': RED},
-    'critical': {'color': RED},
-    'warning': {'color': 'yellow'}
+    "spam": {"color": GREEN, "faint": True},
+    "success": {"color": GREEN, "bold": True},
+    "verbose": {"color": GREEN},
+    "debug": {"color": GREEN},
+    "info": {},
+    "notice": {},
+    "error": {"color": RED},
+    "critical": {"color": RED},
+    "warning": {"color": "yellow"},
 }
 
 
 class Server:
-
     def __init__(self, app, config):
         self.app = app
         self.config = config
@@ -77,7 +76,8 @@ class Server:
 
     def _parse_request(self, cli_sock, cli_addr):
         parser = RequestParser(
-            cli_sock, cli_addr,
+            cli_sock,
+            cli_addr,
             header_timeout=self.config.request_header_timeout,
             body_timeout=self.config.request_body_timeout,
             keep_alive_timeout=self.config.request_keep_alive_timeout,
@@ -97,7 +97,7 @@ class Server:
         flags = fcntl.fcntl(serv_sock.fileno(), fcntl.F_GETFD)
         flags |= fcntl.FD_CLOEXEC
         fcntl.fcntl(serv_sock.fileno(), fcntl.F_SETFD, flags)
-        print(f'* Server listening at http://{host}:{port}')
+        print(f"* Server listening at http://{host}:{port}")
         serv_sock.bind((host, port))
         serv_sock.listen(backlog)
         self._serv_sock = serv_sock
@@ -118,14 +118,13 @@ class Server:
             extra_files = set(extra_files)
         if self.app.config_path:
             extra_files.add(self.app.config_path)
-        reloader = Reloader(
-            callback=self._reload, extra_files=extra_files)
+        reloader = Reloader(callback=self._reload, extra_files=extra_files)
         reloader.start()
-        print('* Reloader started')
+        print("* Reloader started")
 
     def _process(self, i):
         pid = os.getpid()
-        print(f'* Process#{i} pid={pid} started')
+        LOG.info(f"Process#{i} pid={pid} started")
         try:
             self._runner(self._serve_forever())
         except KeyboardInterrupt:
@@ -133,12 +132,12 @@ class Server:
         except Exception as ex:
             LOG.exception(ex)
         finally:
-            print(f'* Process#{i} pid={pid} exited')
+            LOG.info(f"Process#{i} pid={pid} exited")
 
     def _reload(self, filename):
         if self._reloading:
             return
-        print(f'* Detected change in {filename!r}, reloading')
+        print(f"* Detected change in {filename!r}, reloading")
         self._reloading = True
         for p in self._processes:
             os.kill(p.pid, signal.SIGINT)
@@ -151,12 +150,12 @@ class Server:
             if my_timeout > 0:
                 p.join(timeout=my_timeout)
             if p.is_alive():
-                print(f'* Process#{i} pid={p.pid} force terminated')
+                LOG.info(f"Process#{i} pid={p.pid} force terminated")
                 p.terminate()
             p.join()
 
     def start(self):
-        print(f'* Starting {self.num_process} processes')
+        LOG.info(f"Starting {self.num_process} processes")
         for p in self._processes:
             p.start()
         self._start_reloader()
@@ -164,7 +163,7 @@ class Server:
             try:
                 p.join()
             except KeyboardInterrupt:
-                print('* Shutting down processes')
+                LOG.info("Shutting down processes")
                 break
         self._stop_processes()
         if self._reloading:
@@ -174,7 +173,6 @@ class Server:
         async with self._serv_sock:
             while True:
                 cli_sock, cli_addr = await self._serv_sock.accept()
-                LOG.debug('Accept connection from {}:{}'.format(*cli_addr))
-                worker = Worker(
-                    self.app, self._parse_request, cli_sock, cli_addr)
+                LOG.debug("Accept connection from {}:{}".format(*cli_addr))
+                worker = Worker(self.app, self._parse_request, cli_sock, cli_addr)
                 await spawn(worker.main())

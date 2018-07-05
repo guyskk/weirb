@@ -40,12 +40,14 @@ def config_logging(import_name, config):
         field_styles=DEFAULT_FIELD_STYLES,
         level_styles=DEFAULT_LEVEL_STYLES,
     )
-    level_loggers = {logging.getLogger("weirb"), logging.getLogger(import_name)}
+    level_loggers = [logging.getLogger("weirb"), logging.getLogger(import_name)]
+    for logger in level_loggers:
+        logger.setLevel(level)
     if config.logger_colored:
-        for logger in level_loggers:
-            coloredlogs.install(level=level, logger=logger, **colored_params)
+        # https://github.com/xolox/python-coloredlogs/issues/54
         coloredlogs.install(**colored_params)
+        logging.getLogger().setLevel(logging.WARNING)
+        for h in logging.getLogger().handlers:
+            h.setLevel(logging.NOTSET)
     else:
-        for logger in level_loggers:
-            logger.setLevel(level)
         logging.basicConfig(format=fmt, datefmt=datefmt)
