@@ -1,9 +1,9 @@
 from validr import T
 from weirb import require, route, raises
-from weirb.error import HrpcError
+from weirb.error import ServiceError
 
 
-class EchoError(HrpcError):
+class EchoError(ServiceError):
     """Echo Error"""
     status = 400
     code = 'Echo.Error'

@@ -1,4 +1,4 @@
-from .generator import HrpcGenerator
+from .generator import DocumentGenerator
 
 
-__all__ = ('HrpcGenerator',)
+__all__ = ('DocumentGenerator',)

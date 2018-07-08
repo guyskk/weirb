@@ -13,7 +13,7 @@ from . import App
 from .error import ConfigError, AppNotFound
 from .helper import get_current_app_name
 from .shell import Shell
-from .generator import HrpcGenerator
+from .generator import DocumentGenerator
 
 PROJECT_TEMPLATE = Path(__file__).parent / 'project-template'
 DOCS_TEMPLATE = Path(__file__).parent / 'docs-template'
@@ -125,7 +125,7 @@ def _create_app(ctx, name):
     try:
         app = App(name, **config)
     except ConfigError as ex:
-        ctx.fail(str(ex))
+        ctx.fail('config error' + str(ex))
     return app
 
 
@@ -154,7 +154,7 @@ def shell(ctx, name=None):
 def doc(ctx, name=None, preview=False):
     """Generate and preview docs"""
     app = _create_app(ctx, name)
-    generator = HrpcGenerator(app)
+    generator = DocumentGenerator(app)
     generator.gen()
     os.chdir('docs')
     exit_code = os.system('simiki g')

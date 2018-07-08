@@ -8,7 +8,7 @@ date: ${date}
 
 # Errors #
 
-All Hrpc related errors are list here.
+All service related errors are list here.
 
 ${'##'} Built-in Errors ${'##'}
 

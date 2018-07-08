@@ -62,8 +62,15 @@ class ClientResponse:
         self.__repr_text = self.__repr()
 
     @cached_property
+    def ok(self):
+        return 200 <= self.status <= 399
+
+    @cached_property
     def error(self):
-        return self.headers.get("Hrpc-Error", None)
+        e = self.headers.get("Service-Error", None)
+        if e is None and not self.ok:
+            e = self.status
+        return e
 
     @cached_property
     def content_type(self):
@@ -115,7 +122,9 @@ class ClientResponse:
     @cached_property
     def json(self):
         if not self.is_json:
-            return None
+            msg = ('The response has no JSON data, or missing JSON '
+                   'content-type header, eg: application/json')
+            raise ValueError(msg)
         return json.loads(self.text)
 
     def __repr(self):

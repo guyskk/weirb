@@ -46,4 +46,4 @@ class Tagger:
         setattr(f, self.namespace, tags)
 
 
-tagger = Tagger('__weirb_hrpc_tags__')
+tagger = Tagger('__weirb_tags__')

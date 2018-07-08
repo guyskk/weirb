@@ -13,10 +13,11 @@ from .logger import config_logging
 from .request import Request
 from .response import Response
 from .error import ConfigError, DependencyError, HttpRedirect
+from .error import BUILTIN_SERVICE_ERRORS
 from .context import Context
 from .helper import import_all_classes, shorten_text, concat_words
 from .config import InternalConfig, INTERNAL_VALIDATORS
-from .service import Service, Method
+from .service import Service
 from .router import Router
 from .scope import Scope
 from .compat.contextlib import asynccontextmanager
@@ -50,13 +51,13 @@ class App:
 
     def _load_config_module(self):
         self.config_module = None
+        name = f"{self.import_name}.config"
         try:
-            self.config_module = import_module(f"{self.import_name}.config")
-        except ImportError:
-            try:
-                self.config_module = import_module(self.import_name)
-            except ImportError:
-                pass
+            self.config_module = import_module(name)
+        except ModuleNotFoundError as ex:
+            if ex.name != name:
+                raise
+            self.config_module = import_module(self.import_name)
 
     def _load_intro(self):
         if hasattr(self.config_module, "intro"):
@@ -130,6 +131,7 @@ class App:
     def _active_plugins(self):
         self.contexts = []
         self.decorators = []
+        self.raises = set(BUILTIN_SERVICE_ERRORS)
         self.provides = set(self._config_dict)
         for plugin in self.plugins:
             plugin.active(self)
@@ -140,6 +142,8 @@ class App:
                 self.contexts.append(context)
             if hasattr(plugin, "decorator"):
                 self.decorators.append(plugin.decorator)
+            if hasattr(plugin, 'raises'):
+                self.raises.update(plugin.raises)
             if hasattr(plugin, "provides"):
                 self.provides.update(plugin.provides)
             if not hasattr(plugin, "requires"):
@@ -159,7 +163,9 @@ class App:
     def _load_services(self):
         self.services = []
         for obj in import_all_classes(self.import_name, ".+Service"):
-            self.services.append(Service(self, obj))
+            s = Service(self, obj)
+            if s.handlers:
+                self.services.append(s)
 
     def context(self):
         return Context(self)
@@ -235,14 +241,15 @@ class App:
 
     def print_handlers(self):
         title = "Handlers" if self.services else "No Handlers"
-        table = [["Service", "Handler", "Methods", "Path"]]
+        table = [("Methods", "Path", "Handler")]
         for service in self.services:
             for handler in service.handlers:
                 for route in handler.routes:
-                    if isinstance(handler, Method):
+                    if handler.is_method:
                         methods = "*POST"
                     else:
                         methods = " " + concat_words(route.methods, sep=" ")
-                    table.append((service.name, handler.name, methods, route.path))
+                    handler_name = service.name + '.' + handler.name
+                    table.append((methods, route.path, handler_name))
         table = SingleTable(table, title=title)
         print(table.table)

@@ -39,6 +39,7 @@ No Params
 ${handler['params']}
     %endif
 ```
+%endif
 
 **Returns**:
 ```
@@ -60,5 +61,4 @@ Status Code  | Error Code        | Description
 ${error['status']}  | ${error['code']}  | ${error['doc'] or 'No Doc'}
 %endfor
     %endif
-%endif
 %endfor

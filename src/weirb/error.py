@@ -74,8 +74,8 @@ _init_http_errors()
 del _init_http_errors
 
 
-class HrpcError(HttpError):
-    """Base class for HRPC Errors"""
+class ServiceError(HttpError):
+    """Base class for Service Errors"""
 
     status = code = None
 
@@ -91,11 +91,11 @@ class HrpcError(HttpError):
         return f"<{type(self).__name__} {self.status}:{self.code}>"
 
 
-class HrpcInvalidParams(HrpcError):
+class ServiceInvalidParams(ServiceError):
     """Request params invalid"""
 
     status = 400
-    code = "Hrpc.InvalidParams"
+    code = "Service.InvalidParams"
 
 
-BUILTIN_HRPC_ERRORS = [HrpcInvalidParams]
+BUILTIN_SERVICE_ERRORS = frozenset([ServiceInvalidParams])

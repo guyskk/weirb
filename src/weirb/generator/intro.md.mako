@@ -14,7 +14,7 @@ ${'##'} Services ${'##'}
 - [${service['name']}](/services/${service['name']}.html)
 %endfor
 
-${'##'} Built-in HRPC Errors ${'##'}
+${'##'} Built-in Service Errors ${'##'}
 
 Status Code  | Error Code        | Description
 ------------ | ----------------- | -------------

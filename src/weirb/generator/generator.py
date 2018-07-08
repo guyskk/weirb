@@ -3,34 +3,14 @@ import datetime
 from pathlib import Path
 from mako.template import Template
 
-from ..error import BUILTIN_HRPC_ERRORS
-
 _here = Path(__file__).parent
 
 INTRO_MD = _here / 'intro.md.mako'
 SERVICE_MD = _here / 'service.md.mako'
-
 CONTENT_DIR = Path('docs') / 'content'
 
 
-# class ServiceSchema:
-#     name = T.str
-#     doc = T.str.optional
-#     handlers = T.list(HandlerSchema)
-
-# class HandlerSchema:
-#     is_method = T.bool
-#     name = T.str
-#     doc = T.str.optional
-#     routes = T.list(T.dict(
-#         path=T.str,
-#         methods=T.list(T.str),
-#     ))
-#     raises = T.list(T.dict(
-
-#     ))
-
-class HrpcGenerator:
+class DocumentGenerator:
 
     def __init__(self, app):
         self.app = app
@@ -43,7 +23,7 @@ class HrpcGenerator:
                 f'No Doc\n\n'
             )
         self.date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.builtin_errors = self._format_errors(BUILTIN_HRPC_ERRORS)
+        self.builtin_errors = self._format_errors(app.raises)
         self.services = []
         for s in self.app.services:
             handlers = []
@@ -52,20 +32,17 @@ class HrpcGenerator:
                 for r in h.routes:
                     methods = ' '.join(r.methods)
                     routes.append(dict(path=r.path, methods=methods))
+                params = None if h.params is None else str(h.params)
+                returns = None if h.returns is None else str(h.returns)
                 handler = {
                     'is_method': h.is_method,
                     'name': h.name,
                     'doc': h.doc,
                     'routes': routes,
+                    'raises': self._format_errors(h.raises),
+                    'params': params,
+                    'returns': returns,
                 }
-                if h.is_method:
-                    params = None if h.params is None else str(h.params)
-                    returns = None if h.returns is None else str(h.returns)
-                    handler.update(dict(
-                        raises=self._format_errors(h.raises),
-                        params=params,
-                        returns=returns,
-                    ))
                 handlers.append(handler)
             self.services.append({
                 'name': s.name,
