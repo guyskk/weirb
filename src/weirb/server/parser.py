@@ -95,7 +95,7 @@ class RequestParser:
 
     def _get_content_length(self):
         for name, value in self.headers:
-            if name == 'Content-Length':
+            if name.lower() == 'content-length':
                 return int(value)
         raise LengthRequired()
 
