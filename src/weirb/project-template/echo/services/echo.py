@@ -5,29 +5,23 @@ from weirb.error import ServiceError
 
 class EchoError(ServiceError):
     """Echo Error"""
+
     status = 400
-    code = 'Echo.Error'
+    code = "Echo.Error"
 
 
 class EchoService:
 
-    echo_times = require('config.echo_times')
+    echo_times = require("config.echo_times")
 
     @raises(EchoError)
-    async def method_echo(
-        self,
-        text: T.str.default('')
-    ) -> T.dict(text=T.str):
+    async def do_echo(self, text: T.str.default("")) -> T.dict(text=T.str):
         """A echo method"""
-        if text == 'error':
-            raise EchoError('I echo an error')
-        text = text * self.echo_times
-        return dict(text=text)
+        if text == "error":
+            raise EchoError("I echo an error")
+        return {"text": text * self.echo_times}
 
-    @route.get('/echo')
-    @route('/echo/echo', methods=['GET', 'POST'])
+    @route.get("/echo/echo")
     async def get_echo(self):
-        text = self.request.query.get('text') or ''
-        self.response.json(dict(
-            text=text * self.echo_times,
-        ))
+        text = self.request.query.get("text") or ""
+        return {"text": text * self.echo_times}
