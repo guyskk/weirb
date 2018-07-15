@@ -63,6 +63,7 @@ class Server:
         backlog = self.config.backlog
         serv_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         serv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        serv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         flags = fcntl.fcntl(serv_sock.fileno(), fcntl.F_GETFD)
         flags |= fcntl.FD_CLOEXEC
         fcntl.fcntl(serv_sock.fileno(), fcntl.F_SETFD, flags)
