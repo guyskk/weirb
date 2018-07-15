@@ -1,5 +1,6 @@
 import re
 import os
+import sys
 import os.path
 import importlib
 import inspect
@@ -12,6 +13,10 @@ HTTP_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 
 async def stream(data):
     yield data
+
+
+def is_terminal():
+    return sys.stdout.isatty()
 
 
 def shorten_text(x, width=30):

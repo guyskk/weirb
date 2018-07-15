@@ -5,7 +5,7 @@ from importlib import import_module
 from pathlib import Path
 
 import toml
-from terminaltables import SingleTable
+from terminaltables import AsciiTable, SingleTable
 from validr import modelclass, Invalid, Compiler, asdict
 
 from .server import serve
@@ -15,7 +15,7 @@ from .response import Response
 from .error import ConfigError, DependencyError, HttpRedirect
 from .error import BUILTIN_SERVICE_ERRORS
 from .context import Context
-from .helper import import_all_classes, shorten_text, concat_words
+from .helper import import_all_classes, shorten_text, concat_words, is_terminal
 from .config import InternalConfig, INTERNAL_VALIDATORS
 from .service import Service
 from .router import Router
@@ -124,9 +124,9 @@ class App:
             self.config = self.config_class(**config)
         except Invalid as ex:
             raise ConfigError(ex.message) from None
-        self._config_dict = {'config': self.config}
+        self._config_dict = {"config": self.config}
         for k, v in asdict(self.config).items():
-            self._config_dict[f'config.{k}'] = v
+            self._config_dict[f"config.{k}"] = v
 
     def _active_plugins(self):
         self.contexts = []
@@ -142,7 +142,7 @@ class App:
                 self.contexts.append(context)
             if hasattr(plugin, "decorator"):
                 self.decorators.append(plugin.decorator)
-            if hasattr(plugin, 'raises'):
+            if hasattr(plugin, "raises"):
                 self.raises.update(plugin.raises)
             if hasattr(plugin, "provides"):
                 self.provides.update(plugin.provides)
@@ -194,6 +194,14 @@ class App:
         if self.config.print_handlers:
             self.print_handlers()
 
+    def _print_table(self, table, title, inner_row_border=False):
+        if is_terminal():
+            table = SingleTable(table, title=title)
+        else:
+            table = AsciiTable(table, title=title)
+        table.inner_row_border = inner_row_border
+        print(table.table)
+
     def print_config(self):
         table = [("Key", "Value", "Schema")]
         config_schema = self.config.__schema__.items
@@ -201,8 +209,7 @@ class App:
             schema = shorten_text(config_schema[key].repr())
             value = shorten_text(str(value), 20)
             table.append((key, value, schema))
-        table = SingleTable(table, title="Configs")
-        print(table.table)
+        self._print_table(table, title="Configs")
 
     def print_plugins(self):
         title = "Plugins" if self.plugins else "No Plugins"
@@ -222,9 +229,7 @@ class App:
             if hasattr(plugin, "requires"):
                 requires = "\n".join(plugin.requires)
             table.append((name, provides, requires, contributes))
-        table = SingleTable(table, title=title)
-        table.inner_row_border = True
-        print(table.table)
+        self._print_table(table, title=title, inner_row_border=True)
 
     def print_services(self):
         title = "Services" if self.services else "No Services"
@@ -235,9 +240,7 @@ class App:
             requires = [field.key for field in service.fields.values()]
             requires = "\n".join(requires)
             table.append((service.name, handlers, requires))
-        table = SingleTable(table, title=title)
-        table.inner_row_border = True
-        print(table.table)
+        self._print_table(table, title=title, inner_row_border=True)
 
     def print_handlers(self):
         title = "Handlers" if self.services else "No Handlers"
@@ -249,7 +252,6 @@ class App:
                         methods = "*POST"
                     else:
                         methods = " " + concat_words(route.methods, sep=" ")
-                    handler_name = service.name + '.' + handler.name
+                    handler_name = service.name + "." + handler.name
                     table.append((methods, route.path, handler_name))
-        table = SingleTable(table, title=title)
-        print(table.table)
+        self._print_table(table, title=title)

@@ -37,7 +37,6 @@ class InternalConfig:
     root_path = T.str.optional
     server_name = T.str.optional
     backlog = T.int.min(1).default(1024)
-    num_process = T.int.min(1).default(1)
     xheaders = T.bool.default(False)
 
     request_header_timeout = T.float.min(-1).default(60)
@@ -58,7 +57,7 @@ class InternalConfig:
     logger_level = T.loglevel.optional
     logger_colored = T.bool.optional
     logger_format = T.str.default(
-        "%(levelname)1.1s %(asctime)s P%(process)-5s "
+        "%(levelname)1.1s %(asctime)s "
         "%(name)s:%(lineno)-4d %(message)s"
     )
     logger_datefmt = T.str.default("%H:%M:%S")
