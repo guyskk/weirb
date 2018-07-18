@@ -213,7 +213,7 @@ class RequestBodyMixin:
         if not self.is_form:
             msg = ('The request no form data, or missing form '
                    'content-type header, eg: application/x-www-form-urlencoded')
-            raise ValueError(msg)
+            raise BadRequest(msg)
         if not self.body or self.method not in {'POST', 'PUT', 'PATCH'}:
             self._form = self._files = None
             return
