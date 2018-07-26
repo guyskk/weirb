@@ -2,7 +2,7 @@ import logging
 from urllib.parse import unquote
 
 import httptools
-from newio import timeout
+from newio import timeout_after
 
 from ..error import (
     BadRequest,
@@ -124,7 +124,7 @@ class RequestParser:
             yield self._take_body_chunks()
         if self._completed:
             return
-        async with timeout(self.body_timeout) as is_timeout:
+        async with timeout_after(self.body_timeout) as is_timeout:
             try:
                 while not self._completed:
                     chunk = await self._recv()
@@ -157,7 +157,7 @@ class RequestParser:
         # browsers may preconnect but didn't send request immediately
         # keep-alive connection has similar behaviors
         first_chunk = b''
-        async with timeout(self.keep_alive_timeout):
+        async with timeout_after(self.keep_alive_timeout):
             first_chunk = await self._recv()
         if not first_chunk:
             return None
@@ -165,7 +165,7 @@ class RequestParser:
         # read request headers
         try:
             self._feed(first_chunk)
-            async with timeout(self.header_timeout) as is_timeout:
+            async with timeout_after(self.header_timeout) as is_timeout:
                 while not self._headers_completed:
                     if self._readed_size > self.max_header_size:
                         raise RequestHeaderFieldsTooLarge()
