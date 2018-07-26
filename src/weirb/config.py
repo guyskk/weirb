@@ -1,5 +1,4 @@
 from validr import T, Invalid, validator
-from newio_kernel.kernel import MONITOR_DEFAULT_HOST, MONITOR_DEFAULT_PORT
 
 from .error import ConfigError
 
@@ -63,8 +62,6 @@ class InternalConfig:
     logger_datefmt = T.str.default("%H:%M:%S")
 
     newio_monitor_enable = T.bool.optional
-    newio_monitor_host = T.str.default(MONITOR_DEFAULT_HOST)
-    newio_monitor_port = T.int.default(MONITOR_DEFAULT_PORT)
 
     def __post_init__(self):
         self.root_path = self.root_path.rstrip("/") + "/"

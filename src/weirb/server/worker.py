@@ -1,5 +1,5 @@
 import logging
-from newio import spawn
+from newio import CancelledError
 
 from ..error import InternalServerError, HttpError
 from .response import ErrorResponse
@@ -27,7 +27,6 @@ def _format_chunk(chunk: bytes):
 
 
 class Worker:
-
     def __init__(self, app, parse_request, cli_sock, cli_addr):
         self.app = app
         self.parse_request = parse_request
@@ -35,13 +34,19 @@ class Worker:
         self.cli_addr = cli_addr
         self.address = '{}:{}'.format(*cli_addr)
 
-    async def main(self):
+    def __repr__(self):
+        return f'<Worker {self.address} at {hex(id(self))}>'
+
+    async def main(self, nursery):
         try:
             keep_alive = await self._worker()
             if not keep_alive:
                 await self._close()
             else:
-                await spawn(self.main())
+                await nursery.spawn(self.main(nursery))
+        except CancelledError:
+            LOG.info(f'Worker {self} cancelled')
+            await self._close()
         except Exception as ex:
             LOG.exception(ex)
             await self._close()

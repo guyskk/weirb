@@ -22,6 +22,6 @@ class EchoService:
         return {"text": text * self.echo_times}
 
     @route.get("/echo/echo")
-    async def get_echo(self):
+    async def get_echo(self) -> T.dict(text=T.str):
         text = self.request.query.get("text") or ""
         return {"text": text * self.echo_times}

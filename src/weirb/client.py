@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from werkzeug.utils import cached_property
 from werkzeug.http import parse_authorization_header, parse_options_header, parse_cookie
 from werkzeug.datastructures import Headers
-from newio_kernel import run
+from newio import run
 
 from .helper import shorten_text, stream
 from .request import RawRequest

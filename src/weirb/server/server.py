@@ -11,8 +11,7 @@ import sys
 import fcntl
 import logging
 
-from newio import socket, spawn
-from newio_kernel import Runner
+from newio import socket, open_nursery, Runner
 from gunicorn.reloader import Reloader
 
 from .parser import RequestParser
@@ -34,11 +33,7 @@ class Server:
         self.app = app
         self.config = config
         self.debug = config.debug
-        self._runner = Runner(
-            monitor_enable=self.config.newio_monitor_enable,
-            monitor_host=self.config.newio_monitor_host,
-            monitor_port=self.config.newio_monitor_port,
-        )
+        self._runner = Runner(monitor=self.config.newio_monitor_enable)
         self._pid = os.getpid()
         self._init_serv_sock()
         self._reloading = False
@@ -102,8 +97,9 @@ class Server:
 
     async def _serve_forever(self):
         async with self._serv_sock:
-            while True:
-                cli_sock, cli_addr = await self._serv_sock.accept()
-                LOG.debug("Accept connection from {}:{}".format(*cli_addr))
-                worker = Worker(self.app, self._parse_request, cli_sock, cli_addr)
-                await spawn(worker.main())
+            async with open_nursery() as nursery:
+                while True:
+                    cli_sock, cli_addr = await self._serv_sock.accept()
+                    LOG.debug("Accept connection from {}:{}".format(*cli_addr))
+                    worker = Worker(self.app, self._parse_request, cli_sock, cli_addr)
+                    await nursery.spawn(worker.main(nursery))
