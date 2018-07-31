@@ -237,8 +237,7 @@ class App:
         for service in self.services:
             handlers = [m.name for m in service.handlers]
             handlers = concat_words(handlers, 30)
-            requires = [field.key for field in service.fields.values()]
-            requires = "\n".join(requires)
+            requires = "\n".join(sorted(service.scope.requires))
             table.append((service.name, handlers, requires))
         self._print_table(table, title=title, inner_row_border=True)
 
