@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='weirb',
-    version='0.6.0',
+    version='0.6.1',
     description='Weird Web Framework',
     url='https://github.com/guyskk/weirb',
     author='guyskk',
