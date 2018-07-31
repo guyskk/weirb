@@ -7,6 +7,8 @@ from .compat.contextlib import AsyncExitStack
 class Context:
     def __init__(self, app):
         self.config = app.config
+        self.request = None
+        self.response = None
         self._config = app._config_dict
         self._scopes = app._scopes
         self._contexts = [c(self) for c in app.contexts]

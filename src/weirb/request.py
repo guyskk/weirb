@@ -233,6 +233,7 @@ class Request(RequestUrlMixin, RequestHeadersMixin, RequestBodyMixin):
     def __init__(self, context, raw: RawRequest):
         super().__init__()
         self.context = context
+        context.request = self
         self.raw = raw
         self.path_params = {}
         self._xheaders = context.config.xheaders

@@ -79,6 +79,7 @@ class Response(AbstractResponse, ResponseCookieMixin, ResponseRedirectMixin):
     def __init__(self, context, *, status=200, version=None, headers=None, body=None):
         super().__init__()
         self.context = context
+        context.response = self
         self._status = HTTPStatus(status)
         self.version = version or 'HTTP/1.1'
         if headers is None:
