@@ -114,3 +114,4 @@ class Shell:
             code.interact(banner=banner, local=context, exitmsg="")
         finally:
             self._save_headers()
+            self._client.close()

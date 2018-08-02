@@ -1,12 +1,15 @@
 import json
 import inspect
 import logging
+import concurrent.futures
 from urllib.parse import urlencode
+from threading import Thread
 
 from werkzeug.utils import cached_property
 from werkzeug.http import parse_authorization_header, parse_options_header, parse_cookie
 from werkzeug.datastructures import Headers
 from newio import run
+from newio.channel import Channel
 
 from .helper import shorten_text, stream
 from .request import RawRequest
@@ -122,8 +125,10 @@ class ClientResponse:
     @cached_property
     def json(self):
         if not self.is_json:
-            msg = ('The response has no JSON data, or missing JSON '
-                   'content-type header, eg: application/json')
+            msg = (
+                'The response has no JSON data, or missing JSON '
+                'content-type header, eg: application/json'
+            )
             raise ValueError(msg)
         return json.loads(self.text)
 
@@ -168,6 +173,8 @@ class Client:
     def __init__(self, app, headers=None):
         self.app = app
         self.headers = ClientHeaders(headers or {})
+        self.request_channel = Channel()
+        self.server = self.__start_server(self.request_channel)
 
     async def __request(self, path, *, method, query=None, body=None, headers=None):
         path = "/" + path.lstrip("/")
@@ -202,10 +209,33 @@ class Client:
             response.status, response.status_text, response.headers, content
         )
 
+    async def __server_main(self, request_channel):
+        async with request_channel:
+            async for coro, fut in request_channel:
+                try:
+                    result = await coro
+                except Exception as ex:
+                    fut.set_exception(ex)
+                else:
+                    fut.set_result(result)
+
+    def __start_server(self, request_channel):
+        main_coro = self.__server_main(request_channel)
+        server = Thread(target=run, args=(main_coro,))
+        server.start()
+        return server
+
+    def close(self):
+        self.request_channel.controller.close()
+        self.server.join()
+
     def request(self, path, *, method, query=None, body=None, headers=None):
-        return run(
-            self.__request(path, method=method, query=query, body=body, headers=headers)
+        coro = self.__request(
+            path, method=method, query=query, body=body, headers=headers
         )
+        fut = concurrent.futures.Future()
+        self.request_channel.sync.send((coro, fut))
+        return fut.result()
 
     def __data_request(self, path, *, method, query=None, data=None, headers=None):
         if headers:
