@@ -161,8 +161,13 @@ class App:
                 raise DependencyError(msg)
 
     def _load_services(self):
+        import_name = self.config.service_import_name
+        if not import_name:
+            import_name = self.import_name
+        elif import_name.startswith('.'):
+            import_name = self.import_name + import_name
         self.services = []
-        for obj in import_all_classes(self.import_name, ".+Service"):
+        for obj in import_all_classes(import_name, ".+Service"):
             s = Service(self, obj)
             if s.handlers:
                 self.services.append(s)

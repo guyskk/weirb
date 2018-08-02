@@ -25,6 +25,8 @@ INTERNAL_VALIDATORS = dict(loglevel=loglevel_validator)
 class InternalConfig:
     """Weirb Internal Config"""
 
+    service_import_name = T.str.optional
+
     print_config = T.bool.default(False)
     print_plugins = T.bool.default(False)
     print_services = T.bool.default(False)
